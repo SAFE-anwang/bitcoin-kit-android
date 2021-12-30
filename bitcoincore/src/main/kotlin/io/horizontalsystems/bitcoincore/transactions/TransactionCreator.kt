@@ -27,6 +27,13 @@ class TransactionCreator(
         }
     }
 
+    @Throws
+    fun createLockSafe(value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType,unlockedHeight:Long): FullTransaction {
+        return create {
+            builder.buildLockSafeSelfTransaction(value, feeRate, senderPay, sortType, unlockedHeight);
+        }
+    }
+
     private fun create(transactionBuilderFunction: () -> FullTransaction): FullTransaction {
         transactionSender.canSendTransaction()
 

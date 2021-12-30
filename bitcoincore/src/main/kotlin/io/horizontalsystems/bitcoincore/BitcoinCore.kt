@@ -453,6 +453,10 @@ class BitcoinCore(
         return transactionFeeCalculator.fee(value, feeRate, senderPay, address, pluginData)
     }
 
+    fun lockSafeSelf( value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType , unlockedHeight:Long ) : FullTransaction {
+        return transactionCreator.createLockSafe(value, feeRate, senderPay, sortType, unlockedHeight);
+    }
+
     fun send(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>
              , unlockedHeight: Long?     // UPDATE FOR SAFE
     ): FullTransaction {

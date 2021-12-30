@@ -187,6 +187,12 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
             else -> {
                 try {
                     val transaction = safeKit.sendSafe(address!!, amount!!, feeRate = feePriority.feeRate, sortType = TransactionDataSortType.Shuffle, pluginData = getPluginData() ,unlockedHeight = 0)
+//                    val transaction = safeKit.lockSafe(
+//                        amount!!,
+//                        feeRate = feePriority.feeRate,
+//                        sortType = TransactionDataSortType.Shuffle,
+//                        unlockedHeight = 3644923
+//                    )
                     amountLiveData.value = null
                     feeLiveData.value = null
                     addressLiveData.value = null

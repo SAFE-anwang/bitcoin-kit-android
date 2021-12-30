@@ -15,6 +15,30 @@ class TransactionBuilder(
     private val lockTimeSetter: LockTimeSetter
 ) {
 
+    fun buildLockSafeSelfTransaction( value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType , unlockedHeight:Long ) : FullTransaction{
+        val mutableTransaction = MutableTransaction()
+        if ( unlockedHeight != null ){
+            mutableTransaction.unlockedHeight = unlockedHeight;
+        }
+        val publicKey = inputSetter.publicKeyManager.receivePublicKey()
+        val address = inputSetter.addressConverter.convert(publicKey, inputSetter.changeScriptType)
+        mutableTransaction.recipientAddress = address
+        mutableTransaction.recipientValue = value
+
+        inputSetter.setInputs(mutableTransaction, feeRate, senderPay, sortType)
+        lockTimeSetter.setLockTime(mutableTransaction)
+        // ToAddress 是钱包生成地址
+        val count = 10;
+        inputSetter.publicKeyManager.receivePublicKey(count).forEach {
+            mutableTransaction.recipientAddressList.add(
+                inputSetter.addressConverter.convert(it, inputSetter.changeScriptType)
+            )
+        }
+        outputSetter.setOutputs(mutableTransaction, sortType)
+        signer.sign(mutableTransaction)
+        return mutableTransaction.build()
+    }
+
     fun buildTransaction(toAddress: String, value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>
                          ,unlockedHeight:Long?  /* UPDATE FOR SAFE */
     ): FullTransaction {

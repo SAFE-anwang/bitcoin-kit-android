@@ -56,6 +56,10 @@ abstract class AbstractKit {
         return bitcoinCore.fee(value, address, senderPay, feeRate, pluginData)
     }
 
+    fun lockSafe( value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType , unlockedHeight:Long  ) : FullTransaction  {
+        return bitcoinCore.lockSafeSelf( value, senderPay, feeRate, sortType,unlockedHeight );
+    }
+
     fun sendSafe(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData> = mapOf()
                  ,unlockedHeight:Long ? ): FullTransaction {
         val unlockedHeight = unlockedHeight ?: 0;

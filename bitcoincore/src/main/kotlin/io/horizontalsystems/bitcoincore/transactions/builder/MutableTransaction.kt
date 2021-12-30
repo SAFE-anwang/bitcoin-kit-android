@@ -15,6 +15,8 @@ class MutableTransaction(isOutgoing: Boolean = true) {
     var outputs = listOf<TransactionOutput>()
 
     lateinit var recipientAddress: Address
+    var recipientAddressList = mutableListOf<Address>()
+
     var recipientValue = 0L
 
     var changeAddress: Address? = null

@@ -12,12 +12,34 @@ class OutputSetter(private val transactionDataSorterFactory: ITransactionDataSor
     fun setOutputs(transaction: MutableTransaction, sortType: TransactionDataSortType) {
         val list = mutableListOf<TransactionOutput>()
 
-        transaction.recipientAddress.let {
-            list.add(TransactionOutput(transaction.recipientValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+        if ( transaction.unlockedHeight != null ){
+            transaction.transaction.version = 103;
         }
 
+        if ( transaction.recipientAddressList.isNotEmpty() ){
+            val size = transaction.recipientAddressList.size;
+            val recipientVal = transaction.recipientValue / size;
+            transaction.recipientAddressList.forEachIndexed{ index, address ->
+                list.add(TransactionOutput(recipientVal, index, address.lockingScript, address.scriptType, address.string, address.hash,
+                    null , transaction.unlockedHeight!!.plus( index * 86400 ), "73616665".hexToByteArray() ) )
+            }
+        }else{
+            transaction.recipientAddress.let {
+                if (transaction.unlockedHeight != null){
+                    list.add(TransactionOutput(transaction.recipientValue, 0, it.lockingScript, it.scriptType, it.string, it.hash,
+                        null , transaction.unlockedHeight , "73616665".hexToByteArray() ) )
+                }else{
+                    list.add(TransactionOutput(transaction.recipientValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+                }
+            }
+        }
         transaction.changeAddress?.let {
-            list.add(TransactionOutput(transaction.changeValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+            if (transaction.unlockedHeight != null){
+                list.add(TransactionOutput(transaction.changeValue, 0, it.lockingScript, it.scriptType, it.string, it.hash,
+                    null , 0 , "73616665".hexToByteArray() ) )
+            }else{
+                list.add(TransactionOutput(transaction.changeValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+            }
         }
 
         if (transaction.getPluginData().isNotEmpty()) {
@@ -25,30 +47,12 @@ class OutputSetter(private val transactionDataSorterFactory: ITransactionDataSor
             transaction.getPluginData().forEach {
                 data += byteArrayOf(it.key) + it.value
             }
-
             list.add(TransactionOutput(0, 0, data, ScriptType.NULL_DATA))
         }
 
         val sorted = transactionDataSorterFactory.sorter(sortType).sortOutputs(list)
         sorted.forEachIndexed { index, transactionOutput ->
             transactionOutput.index = index
-        }
-
-        /**
-         * UPDATE FOR SAFE - UNLOCKED_HEIGHT TRANSACTION OUTPUT
-         */
-        val toAddress = transaction.recipientAddress.string
-        val unlockedHeight = transaction.unlockedHeight;
-        if ( unlockedHeight != null ){
-            transaction.transaction.version = 103;
-            sorted.forEach{ transactionOutput ->
-                if ( transactionOutput.address.equals(toAddress) ){
-                    transactionOutput.unlockedHeight = unlockedHeight
-                }else{
-                    transactionOutput.unlockedHeight = 0
-                }
-                transactionOutput.reserve = "73616665".hexToByteArray();
-            }
         }
 
         transaction.outputs = sorted

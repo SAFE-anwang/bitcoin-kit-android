@@ -31,6 +31,15 @@ class PublicKeyManager(
     }
 
     @Throws
+    fun receivePublicKey( count:Int ): List<PublicKey> {
+        val unused = storage.getPublicKeysUnused();
+        return unused
+            .filter { it.account == 0 }
+            .sortedWith(compareBy { it.index })
+            .subList(1 , count + 1 )
+    }
+
+    @Throws
     fun changePublicKey(): PublicKey {
         return getPublicKey(external = false)
     }
