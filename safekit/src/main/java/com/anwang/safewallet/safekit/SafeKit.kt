@@ -100,8 +100,10 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
 
         network = when (networkType) {
             NetworkType.MainNet -> {
-//                initialSyncUrl = "https://dash.horizontalsystems.xyz/apg"
-                initialSyncUrl = "https://chain.anwang.org/insight-api-safe/"
+                //SAFE正式链
+//                initialSyncUrl = "https://chain.anwang.org/insight-api-safe/"
+                //SAFE测试链
+                initialSyncUrl = "http://47.107.47.210/insight-api-safe/"
                 MainNetSafe(context)
             }
             NetworkType.TestNet -> {

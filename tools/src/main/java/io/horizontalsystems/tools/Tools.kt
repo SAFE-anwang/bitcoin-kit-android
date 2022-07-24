@@ -9,7 +9,7 @@ import java.util.logging.Logger
 fun main() {
     Logger.getLogger("").level = Level.SEVERE
     ////生成safe时屏掉
-    syncCheckpoints()
+//    syncCheckpoints()
     buildCustomCheckpoint()
 }
 
@@ -21,13 +21,13 @@ private fun syncCheckpoints() {
 private fun buildCustomCheckpoint() {
     val checkpointBlock = Block(BlockHeader(
             version = 536870912,
-            previousBlockHeaderHash = HashUtils.toBytesAsLE("28d14d6a1119f4ded298ed253251ece7ca87eaa493d3b27af74e883359b4c09b"),
-            merkleRoot = HashUtils.toBytesAsLE("b68af25ff5638a6821d80a8aa2c9b18347d4a54f27b9098351dd6e95e6c8db26"),
-            timestamp = 1655733594,
+            previousBlockHeaderHash = HashUtils.toBytesAsLE("c9762befcb05891026a6f207787029095f914c07f9d4213df568c109fab7c06e"),
+            merkleRoot = HashUtils.toBytesAsLE("1bd67caa4fc7486e64dfd0fdd17800507c32687ddc176a099780d441e77b1465"),
+            timestamp = 1658649095,
             bits = 0,
-            nonce = 87468750,
-            hash = HashUtils.toBytesAsLE("b68af25ff5638a6821d80a8aa2c9b18347d4a54f27b9098351dd6e95e6c8db26")
-    ), 3966833)
+            nonce = 304200,
+            hash = HashUtils.toBytesAsLE("01c818bd957bc9fe0a2004cdb62bd12d3aec0691e5eb6bc36e47bcd3db7d693f")
+    ), 10529)
 
     BuildCheckpoints().build(checkpointBlock)
 }

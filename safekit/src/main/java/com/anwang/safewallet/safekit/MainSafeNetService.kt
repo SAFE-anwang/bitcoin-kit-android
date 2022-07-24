@@ -20,8 +20,10 @@ class MainSafeNetService(val context: Context, val mainNetSafe: MainNetSafe) {
     private val logger = Logger.getLogger("MainSafeNetService")
     private val service: SafeNetServiceApi
     private val gson: Gson
-
-    private val url: String = "https://chain.anwang.org/"
+    //SAFE正式链
+//    private val url: String = "https://chain.anwang.org/"
+    //SAFE测试链
+    private val url: String = "http://47.107.47.210/"
     private val sp = context.getSharedPreferences("MainSafeNet", Context.MODE_PRIVATE)
 
     init {
@@ -47,7 +49,7 @@ class MainSafeNetService(val context: Context, val mainNetSafe: MainNetSafe) {
 
         service = retrofit.create(SafeNetServiceApi::class.java)
 
-        getSeed()
+//        getSeed()
     }
 
 
