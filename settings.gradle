@@ -7,3 +7,4 @@ include ':app',             // Demo app
         ':hodler',          // Hodler
         ':tools'            // Checkpoint syncer
 include ':safekit'
+include ':safegemkit'
