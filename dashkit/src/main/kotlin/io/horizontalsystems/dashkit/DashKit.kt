@@ -40,6 +40,8 @@ import io.horizontalsystems.dashkit.storage.DashStorage
 import io.horizontalsystems.dashkit.tasks.PeerTaskFactory
 import io.horizontalsystems.dashkit.validators.DarkGravityWaveTestnetValidator
 import io.horizontalsystems.dashkit.validators.DarkGravityWaveValidator
+import io.horizontalsystems.hdwalletkit.HDExtendedKey
+import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.reactivex.Single
 
@@ -67,26 +69,47 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
     private val dashTransactionInfoConverter: DashTransactionInfoConverter
 
     constructor(
-            context: Context,
-            connectionManager: ConnectionManager,
-            words: List<String>,
-            passphrase: String,
-            walletId: String,
-            networkType: NetworkType = NetworkType.MainNet,
-            peerSize: Int = 10,
-            syncMode: SyncMode = SyncMode.Api(),
-            confirmationsThreshold: Int = 6
+        context: Context,
+        connectionManager: ConnectionManager,
+        words: List<String>,
+        passphrase: String,
+        walletId: String,
+        networkType: NetworkType = NetworkType.MainNet,
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
     ) : this(context, connectionManager, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
-            context: Context,
-            connectionManager: ConnectionManager,
-            seed: ByteArray,
-            walletId: String,
-            networkType: NetworkType = NetworkType.MainNet,
-            peerSize: Int = 10,
-            syncMode: SyncMode = SyncMode.Api(),
-            confirmationsThreshold: Int = 6
+        context: Context,
+        connectionManager: ConnectionManager,
+        seed: ByteArray,
+        walletId: String,
+        networkType: NetworkType = NetworkType.MainNet,
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
+    ) : this(context, connectionManager, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+
+    /**
+     * @constructor Creates and initializes the BitcoinKit
+     * @param context The Android context
+     * @param extendedKey HDExtendedKey that contains HDKey and version
+     * @param walletId an arbitrary ID of type String.
+     * @param networkType The network type. The default is MainNet.
+     * @param peerSize The # of peer-nodes required. The default is 10 peers.
+     * @param syncMode How the kit syncs with the blockchain. The default is SyncMode.Api().
+     * @param confirmationsThreshold How many confirmations required to be considered confirmed. The default is 6 confirmations.
+     */
+    constructor(
+        context: Context,
+        connectionManager: ConnectionManager,
+        extendedKey: HDExtendedKey,
+        walletId: String,
+        networkType: NetworkType = NetworkType.MainNet,
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
     ) {
         val coreDatabase = CoreDatabase.getInstance(context, getDatabaseNameCore(networkType, walletId, syncMode))
         val dashDatabase = DashKitDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
@@ -97,11 +120,11 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
 
         network = when (networkType) {
             NetworkType.MainNet -> {
-                initialSyncUrl = "https://dash.horizontalsystems.xyz/apg"
+                initialSyncUrl = "https://insight.dash.org/insight-api"
                 MainNetDash()
             }
             NetworkType.TestNet -> {
-                initialSyncUrl = "http://dash-testnet.horizontalsystems.xyz/apg"
+                initialSyncUrl = "https://testnet-insight.dash.org/insight-api"
                 TestNetDash()
             }
         }
@@ -129,31 +152,30 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         blockValidatorSet.addBlockValidator(blockValidatorChain)
 
         bitcoinCore = BitcoinCoreBuilder()
-                .setContext(context)
-                .setSeed(seed)
-                .setNetwork(network)
-                .setPaymentAddressParser(paymentAddressParser)
-                .setPeerSize(peerSize)
-                .setSyncMode(syncMode)
-                .setConfirmationThreshold(confirmationsThreshold)
-                .setStorage(coreStorage)
-                .setBlockHeaderHasher(X11Hasher())
-                .setInitialSyncApi(initialSyncApi)
-                .setTransactionInfoConverter(dashTransactionInfoConverter)
-                .setBlockValidator(blockValidatorSet)
-                .setConnectionManager(connectionManager)
-                .build()
+            .setContext(context)
+            .setExtendedKey(extendedKey)
+            .setNetwork(network)
+            .setPaymentAddressParser(paymentAddressParser)
+            .setPeerSize(peerSize)
+            .setSyncMode(syncMode)
+            .setConfirmationThreshold(confirmationsThreshold)
+            .setStorage(coreStorage)
+            .setBlockHeaderHasher(X11Hasher())
+            .setInitialSyncApi(initialSyncApi)
+            .setTransactionInfoConverter(dashTransactionInfoConverter)
+            .setBlockValidator(blockValidatorSet)
+            .setConnectionManager(connectionManager)
+            .build()
 
         bitcoinCore.listener = this
 
         //  extending bitcoinCore
 
-
-
         bitcoinCore.addMessageParser(MasternodeListDiffMessageParser())
-                .addMessageParser(TransactionLockMessageParser())
-                .addMessageParser(TransactionLockVoteMessageParser())
-                .addMessageParser(ISLockMessageParser())
+            .addMessageParser(TransactionLockMessageParser())
+            .addMessageParser(TransactionLockVoteMessageParser())
+            .addMessageParser(ISLockMessageParser())
+            .addMessageParser(TransactionMessageParser())
 
         bitcoinCore.addMessageSerializer(GetMasternodeListDiffMessageSerializer())
 
@@ -163,7 +185,14 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         val masternodeCbTxHasher = MasternodeCbTxHasher(CoinbaseTransactionSerializer(), merkleRootHasher)
 
         val quorumListManager = QuorumListManager(dashStorage, QuorumListMerkleRootCalculator(merkleRootCreator), QuorumSortedList())
-        val masternodeListManager = MasternodeListManager(dashStorage, masternodeListMerkleRootCalculator, masternodeCbTxHasher, MerkleBranch(), MasternodeSortedList(), quorumListManager)
+        val masternodeListManager = MasternodeListManager(
+            dashStorage,
+            masternodeListMerkleRootCalculator,
+            masternodeCbTxHasher,
+            MerkleBranch(),
+            MasternodeSortedList(),
+            quorumListManager
+        )
         val masternodeSyncer = MasternodeListSyncer(bitcoinCore, PeerTaskFactory(), masternodeListManager, bitcoinCore.initialBlockDownload)
 
         bitcoinCore.addPeerTaskHandler(masternodeSyncer)
@@ -252,10 +281,10 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         const val heightInterval = targetTimespan / targetSpacing
 
         private fun getDatabaseNameCore(networkType: NetworkType, walletId: String, syncMode: SyncMode) =
-                "${getDatabaseName(networkType, walletId, syncMode)}-core"
+            "${getDatabaseName(networkType, walletId, syncMode)}-core"
 
         private fun getDatabaseName(networkType: NetworkType, walletId: String, syncMode: SyncMode) =
-                "Dash-${networkType.name}-$walletId-${syncMode.javaClass.simpleName}"
+            "Dash-${networkType.name}-$walletId-${syncMode.javaClass.simpleName}"
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
             for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.NewWallet())) {

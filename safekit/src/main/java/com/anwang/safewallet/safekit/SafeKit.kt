@@ -20,6 +20,7 @@ import io.horizontalsystems.bitcoincore.transactions.TransactionSizeCalculator
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
 import io.horizontalsystems.bitcoincore.utils.MerkleBranch
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
+import io.horizontalsystems.dashkit.DashKit
 import io.horizontalsystems.dashkit.IInstantTransactionDelegate
 import io.horizontalsystems.dashkit.InstantSend
 import io.horizontalsystems.dashkit.X11Hasher
@@ -39,6 +40,8 @@ import io.horizontalsystems.dashkit.models.InstantTransactionState
 import io.horizontalsystems.dashkit.storage.DashKitDatabase
 import io.horizontalsystems.dashkit.storage.DashStorage
 import io.horizontalsystems.dashkit.tasks.PeerTaskFactory
+import io.horizontalsystems.hdwalletkit.HDExtendedKey
+import io.horizontalsystems.hdwalletkit.HDWallet
 import io.horizontalsystems.hdwalletkit.Mnemonic
 
 class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
@@ -82,9 +85,20 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
     ) : this(context,connectionManager, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
+        context: Context,
+        connectionManager: ConnectionManager,
+        seed: ByteArray,
+        walletId: String,
+        networkType: NetworkType = NetworkType.MainNet,
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
+    ) : this(context, connectionManager, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+
+    constructor(
             context: Context,
             connectionManager: ConnectionManager,
-            seed: ByteArray,
+            extendedKey: HDExtendedKey,
             walletId: String,
             networkType: NetworkType = NetworkType.MainNet,
             peerSize: Int = 10,
@@ -133,7 +147,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         val coreBuilder = BitcoinCoreBuilder()
         bitcoinCore = coreBuilder
                 .setContext(context)
-                .setSeed(seed)
+                .setExtendedKey(extendedKey)
                 .setNetwork(network)
                 .setPaymentAddressParser(paymentAddressParser)
                 .setPeerSize(peerSize)

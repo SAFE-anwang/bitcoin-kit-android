@@ -28,12 +28,14 @@ import io.horizontalsystems.bitcoincore.storage.Storage
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
 import io.horizontalsystems.bitcoincore.utils.CashAddressConverter
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
+import io.horizontalsystems.hdwalletkit.HDExtendedKey
+import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
 
 class BitcoinCashKit : AbstractKit {
     sealed class NetworkType {
-        class MainNet(val coinType: MainNetBitcoinCash.CoinType): NetworkType()
-        object TestNet: NetworkType()
+        class MainNet(val coinType: MainNetBitcoinCash.CoinType) : NetworkType()
+        object TestNet : NetworkType()
 
         val description: String
             get() = when (this) {
@@ -71,14 +73,35 @@ class BitcoinCashKit : AbstractKit {
     ) : this(context, connectionManager, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
-            context: Context,
-            connectionManager: ConnectionManager,
-            seed: ByteArray,
-            walletId: String,
-            networkType: NetworkType = NetworkType.MainNet(MainNetBitcoinCash.CoinType.Type145),
-            peerSize: Int = 10,
-            syncMode: SyncMode = SyncMode.Api(),
-            confirmationsThreshold: Int = 6
+        context: Context,
+        connectionManager: ConnectionManager,
+        seed: ByteArray,
+        walletId: String,
+        networkType: NetworkType = NetworkType.MainNet(MainNetBitcoinCash.CoinType.Type145),
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
+    ) : this(context,connectionManager, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+
+    /**
+     * @constructor Creates and initializes the BitcoinKit
+     * @param context The Android context
+     * @param extendedKey HDExtendedKey that contains HDKey and version
+     * @param walletId an arbitrary ID of type String.
+     * @param networkType The network type. The default is MainNet.
+     * @param peerSize The # of peer-nodes required. The default is 10 peers.
+     * @param syncMode How the kit syncs with the blockchain. The default is SyncMode.Api().
+     * @param confirmationsThreshold How many confirmations required to be considered confirmed. The default is 6 confirmations.
+     */
+    constructor(
+        context: Context,
+        connectionManager: ConnectionManager,
+        extendedKey: HDExtendedKey,
+        walletId: String,
+        networkType: NetworkType,
+        peerSize: Int = 10,
+        syncMode: SyncMode = SyncMode.Api(),
+        confirmationsThreshold: Int = 6
     ) {
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
         val storage = Storage(database)
@@ -86,7 +109,8 @@ class BitcoinCashKit : AbstractKit {
 
         network = when (networkType) {
             is NetworkType.MainNet -> {
-                initialSyncApi = BlockchainComApi("https://api.haskoin.com/bch/blockchain", "https://api.blocksdecoded.com/v1/blockchains/bitcoin-cash")
+                initialSyncApi =
+                    BlockchainComApi("https://api.haskoin.com/bch/blockchain", "https://api.blocksdecoded.com/v1/blockchains/bitcoin-cash")
                 MainNetBitcoinCash(networkType.coinType)
             }
             NetworkType.TestNet -> {
@@ -108,7 +132,7 @@ class BitcoinCashKit : AbstractKit {
             val asertValidator = AsertValidator()
 
             blockValidatorChain.add(ForkValidator(bchnChainForkHeight, bchnChainForkBlockHash, asertValidator))
-            blockValidatorChain.add(asertValidator  )
+            blockValidatorChain.add(asertValidator)
 
             blockValidatorChain.add(ForkValidator(svForkHeight, abcForkBlockHash, daaValidator))
             blockValidatorChain.add(daaValidator)
@@ -120,18 +144,18 @@ class BitcoinCashKit : AbstractKit {
         blockValidatorSet.addBlockValidator(blockValidatorChain)
 
         bitcoinCore = BitcoinCoreBuilder()
-                .setContext(context)
-                .setSeed(seed)
-                .setNetwork(network)
-                .setPaymentAddressParser(paymentAddressParser)
-                .setPeerSize(peerSize)
-                .setSyncMode(syncMode)
-                .setConfirmationThreshold(confirmationsThreshold)
-                .setStorage(storage)
-                .setInitialSyncApi(initialSyncApi)
-                .setBlockValidator(blockValidatorSet)
-                .setConnectionManager(connectionManager)
-                .build()
+            .setContext(context)
+            .setExtendedKey(extendedKey)
+            .setNetwork(network)
+            .setPaymentAddressParser(paymentAddressParser)
+            .setPeerSize(peerSize)
+            .setSyncMode(syncMode)
+            .setConfirmationThreshold(confirmationsThreshold)
+            .setStorage(storage)
+            .setInitialSyncApi(initialSyncApi)
+            .setBlockValidator(blockValidatorSet)
+            .setConnectionManager(connectionManager)
+            .build()
 
         //  extending bitcoinCore
 
@@ -155,7 +179,8 @@ class BitcoinCashKit : AbstractKit {
         val abcForkBlockHash = "0000000000000000004626ff6e3b936941d341c5932ece4357eeccac44e6d56c".toReversedByteArray()
         val bchnChainForkBlockHash = "0000000000000000029e471c41818d24b8b74c911071c4ef0b4a0509f9b5a8ce".toReversedByteArray()
 
-        private fun getDatabaseName(networkType: NetworkType, walletId: String, syncMode: SyncMode): String = "BitcoinCash-${networkType.description}-$walletId-${syncMode.javaClass.simpleName}"
+        private fun getDatabaseName(networkType: NetworkType, walletId: String, syncMode: SyncMode): String =
+            "BitcoinCash-${networkType.description}-$walletId-${syncMode.javaClass.simpleName}"
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
             for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.NewWallet())) {
