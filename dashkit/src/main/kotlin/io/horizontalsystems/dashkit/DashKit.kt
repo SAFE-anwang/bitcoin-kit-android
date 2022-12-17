@@ -70,7 +70,7 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
 
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         words: List<String>,
         passphrase: String,
         walletId: String,
@@ -78,18 +78,18 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         peerSize: Int = 10,
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6
-    ) : this(context, connectionManager, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+    ) : this(context, /*connectionManager,*/ Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         seed: ByteArray,
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
         peerSize: Int = 10,
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6
-    ) : this(context, connectionManager, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+    ) : this(context, /*connectionManager,*/ HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -103,7 +103,7 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
      */
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         extendedKey: HDExtendedKey,
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
@@ -164,7 +164,7 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             .setInitialSyncApi(initialSyncApi)
             .setTransactionInfoConverter(dashTransactionInfoConverter)
             .setBlockValidator(blockValidatorSet)
-            .setConnectionManager(connectionManager)
+//            .setConnectionManager(connectionManager)
             .build()
 
         bitcoinCore.listener = this

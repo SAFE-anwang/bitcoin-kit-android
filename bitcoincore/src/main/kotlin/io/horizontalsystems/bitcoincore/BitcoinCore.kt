@@ -135,8 +135,8 @@ class BitcoinCoreBuilder {
     }
 
     fun build(): BitcoinCore {
-//        val context = checkNotNull(this.context)
-        val connectionManager = checkNotNull(this.connectionManager)
+        val context = checkNotNull(this.context)
+//        val connectionManager = checkNotNull(this.connectionManager)
         val extendedKey = checkNotNull(this.extendedKey)
         val network = checkNotNull(this.network)
         val paymentAddressParser = checkNotNull(this.paymentAddressParser)
@@ -158,7 +158,7 @@ class BitcoinCoreBuilder {
 
         val dataProvider = DataProvider(storage, unspentOutputProvider, transactionInfoConverter)
 
-//        val connectionManager = ConnectionManager(context)
+        val connectionManager = ConnectionManager(context)
 
         val purpose = extendedKey.info.purpose
 

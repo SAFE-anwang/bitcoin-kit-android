@@ -70,6 +70,9 @@ class SyncManager(
             is KitState.Syncing, is KitState.Synced -> {
                 peerGroup.stop()
             }
+            else -> {
+
+            }
         }
         syncState = KitState.NotSynced(BitcoinCore.StateError.NotStarted())
     }

@@ -62,7 +62,7 @@ class BitcoinCashKit : AbstractKit {
 
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         words: List<String>,
         passphrase: String,
         walletId: String,
@@ -70,18 +70,18 @@ class BitcoinCashKit : AbstractKit {
         peerSize: Int = 10,
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6
-    ) : this(context, connectionManager, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+    ) : this(context, /*connectionManager,*/ Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         seed: ByteArray,
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet(MainNetBitcoinCash.CoinType.Type145),
         peerSize: Int = 10,
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6
-    ) : this(context,connectionManager, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+    ) : this(context,/*connectionManager,*/ HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -95,7 +95,7 @@ class BitcoinCashKit : AbstractKit {
      */
     constructor(
         context: Context,
-        connectionManager: ConnectionManager,
+//        connectionManager: ConnectionManager,
         extendedKey: HDExtendedKey,
         walletId: String,
         networkType: NetworkType,
@@ -154,7 +154,7 @@ class BitcoinCashKit : AbstractKit {
             .setStorage(storage)
             .setInitialSyncApi(initialSyncApi)
             .setBlockValidator(blockValidatorSet)
-            .setConnectionManager(connectionManager)
+//            .setConnectionManager(connectionManager)
             .build()
 
         //  extending bitcoinCore
