@@ -158,7 +158,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setInitialSyncApi(initialSyncApi)
                 .setTransactionInfoConverter(dashTransactionInfoConverter)
                 .setBlockValidator(blockValidatorSet)
-                .setConnectionManager(connectionManager)
+//                .setConnectionManager(connectionManager)
 //                .addPlugin(HodlerPlugin(coreBuilder.addressConverter, coreStorage, BlockMedianTimeHelper(coreStorage)))
                 .build()
 

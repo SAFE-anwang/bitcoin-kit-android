@@ -90,6 +90,7 @@ open class TransactionInfo {
                     value = it.get("value").asLong(),
                     address = if (it.get("address")?.isNull == false) it.get("address")?.asString() else null,
                     pluginId = if (it.get("pluginId")?.isNull == false) it.get("pluginId")?.asString()?.toByte() else null,
+                    unlockedHeight = if (it.get("unlockedHeight")?.isNull == false) it.get("unlockedHeight")?.asString()?.toLong() else null,
                     pluginDataString = if (it.get("pluginDataString")?.isNull == false) it.get("pluginDataString")?.asString() else null)
 
                 outputs.add(output)
@@ -108,6 +109,7 @@ open class TransactionInfo {
             outputObj.add("address", it.address)
             outputObj.add("pluginId", it.pluginId?.toString())
             outputObj.add("pluginDataString", it.pluginDataString)
+            outputObj.add("unlockedHeight", it.unlockedHeight?.toString())
             jsonArray.add(outputObj)
         }
         return jsonArray
