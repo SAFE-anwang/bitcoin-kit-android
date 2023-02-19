@@ -71,4 +71,8 @@ class InitialSyncer(
 
         listener?.onSyncFailed(error)
     }
+
+    fun updateMaxHeight(maxHeight: Int) {
+        (blockDiscovery as BlockDiscoveryBatch).updateMaxHeight(maxHeight)
+    }
 }

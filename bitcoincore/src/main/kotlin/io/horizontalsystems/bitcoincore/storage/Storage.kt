@@ -124,6 +124,10 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
         return store.block.getBlocksChunk(fromHeight, toHeight)
     }
 
+    override fun getBlocksChunk(fromHeight: Int): List<Block> {
+        return store.block.getBlocksChunk(fromHeight)
+    }
+
     override fun blocksCount(headerHashes: List<ByteArray>?): Int {
         return if (headerHashes == null) {
             store.block.count()
@@ -173,6 +177,10 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
 
     override fun timestamps(from: Int, to: Int): List<Long> {
         return store.block.getTimestamps(from, to)
+    }
+
+    override fun getBlocksForTime(timestamp: Long): List<Block> {
+        return store.block.getBlocksForTime(timestamp)
     }
 
     // Transaction

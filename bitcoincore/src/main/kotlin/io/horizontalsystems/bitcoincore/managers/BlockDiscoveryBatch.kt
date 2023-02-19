@@ -7,7 +7,7 @@ import io.reactivex.Single
 class BlockDiscoveryBatch(
     private val blockHashFetcher: BlockHashFetcher,
     private val publicKeyFetcher: IPublicKeyFetcher,
-    private val maxHeight: Int,
+    private var maxHeight: Int,
     private val gapLimit: Int
 ) : IBlockDiscovery {
 
@@ -70,4 +70,7 @@ class BlockDiscoveryBatch(
         var startIndex: Int = 0
     )
 
+    fun updateMaxHeight(maxHeight: Int) {
+        this.maxHeight = maxHeight
+    }
 }

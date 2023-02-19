@@ -1,6 +1,7 @@
 package io.horizontalsystems.bitcoincore.blocks
 
 import io.horizontalsystems.bitcoincore.core.IBlockSyncListener
+import io.horizontalsystems.bitcoincore.models.Checkpoint
 import io.horizontalsystems.bitcoincore.models.InventoryItem
 import io.horizontalsystems.bitcoincore.models.MerkleBlock
 import io.horizontalsystems.bitcoincore.network.peer.*
@@ -179,6 +180,10 @@ class InitialBlockDownload(
                 }
             }
         }
+    }
+
+    fun updateCheckpoint(checkpoint: Checkpoint) {
+        blockSyncer.updateCheckpoint(checkpoint)
     }
 
 }

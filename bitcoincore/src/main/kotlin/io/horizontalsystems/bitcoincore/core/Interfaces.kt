@@ -50,6 +50,8 @@ interface IStorage {
     fun getBlocks(heightGreaterOrEqualTo: Int, stale: Boolean): List<Block>
     fun getBlocks(hashes: List<ByteArray>): List<Block>
     fun getBlocksChunk(fromHeight: Int, toHeight: Int): List<Block>
+    fun getBlocksChunk(fromHeight: Int): List<Block>
+    fun getBlocksForTime(timestamp: Long): List<Block>
 
     fun addBlock(block: Block)
     fun saveBlock(block: Block)

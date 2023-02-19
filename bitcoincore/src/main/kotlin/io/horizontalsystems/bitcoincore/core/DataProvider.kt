@@ -131,4 +131,9 @@ class DataProvider(
             block.height,
             block.timestamp)
 
+    fun updateLastBlockInfo() {
+        lastBlockInfo = storage.lastBlock()?.let {
+            blockInfo(it)
+        }
+    }
 }

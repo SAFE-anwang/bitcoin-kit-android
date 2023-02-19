@@ -139,4 +139,10 @@ class SyncManager(
     override fun onBlockSyncFinished() {
         syncState = KitState.Synced
     }
+
+    fun updateMaxHeight(maxHeight: Int, initBlockHeight: Int) {
+        initialBestBlockHeight = initBlockHeight
+        currentBestBlockHeight = maxHeight
+        initialSyncer.updateMaxHeight(maxHeight)
+    }
 }

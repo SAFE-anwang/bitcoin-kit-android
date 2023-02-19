@@ -17,7 +17,7 @@ class BlockSyncer(
         private val blockchain: Blockchain,
         private val transactionProcessor: BlockTransactionProcessor,
         private val publicKeyManager: IPublicKeyManager,
-        private val checkpoint: Checkpoint,
+        private var checkpoint: Checkpoint,
         private val state: State = State()
 ) {
 
@@ -145,6 +145,10 @@ class BlockSyncer(
 
     private fun clearBlockHashes() {
         storage.deleteBlockchainBlockHashes()
+    }
+
+    fun updateCheckpoint(checkpoint: Checkpoint) {
+        this.checkpoint = checkpoint
     }
 
     class State(var iterationHasPartialBlocks: Boolean = false)

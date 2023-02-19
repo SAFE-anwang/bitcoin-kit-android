@@ -420,7 +420,7 @@ class BitcoinCoreBuilder {
 }
 
 class BitcoinCore(
-    private val storage: IStorage,
+    val storage: IStorage,
     private val dataProvider: DataProvider,
     private val publicKeyManager: IPublicKeyManager,
     private val addressConverter: AddressConverterChain,
@@ -523,6 +523,13 @@ class BitcoinCore(
 
     fun refresh() {
         start()
+    }
+
+    fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
+        dataProvider.updateLastBlockInfo()
+        val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)
+        initialBlockDownload.updateCheckpoint(checkpoint)
+        syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)
     }
 
     fun onEnterForeground() {

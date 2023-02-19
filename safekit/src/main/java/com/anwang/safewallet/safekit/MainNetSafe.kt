@@ -2,6 +2,7 @@ package com.anwang.safewallet.safekit
 
 import android.content.Context
 import android.util.Log
+import io.horizontalsystems.bitcoincore.models.Checkpoint
 import io.horizontalsystems.bitcoincore.network.Network
 import io.reactivex.schedulers.Schedulers
 import java.util.*
@@ -14,6 +15,8 @@ class MainNetSafe() : Network() {
     constructor(context: Context) : this() {
         MainSafeNetService(context, this)
     }
+
+    var fallbackBlockDate: String? = null
 
     override val protocolVersion = 70210
     override val noBloomVersion = 70201
@@ -73,4 +76,13 @@ class MainNetSafe() : Network() {
     override fun isSafe(): Boolean {
         return true
     }
+
+    override val lastCheckpoint: Checkpoint
+        get() = if (fallbackBlockDate == null) {
+            Log.e("longwen", "lastCheckpoint: ${super.lastCheckpoint}")
+            super.lastCheckpoint
+        } else {
+            Log.e("longwen", "lastCheckpoint: ${javaClass.simpleName}_${fallbackBlockDate}.checkpoint")
+            Checkpoint("${javaClass.simpleName}_${fallbackBlockDate}.checkpoint")
+        }
 }

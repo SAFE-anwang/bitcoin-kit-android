@@ -59,8 +59,15 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
     }
 
     var listener: Listener? = null
+    var mainNetSafe: MainNetSafe? = null
 
-    override var bitcoinCore: BitcoinCore
+    var fallbackBlockDate: String? = null
+        set(value) {
+            field = value
+            mainNetSafe?.fallbackBlockDate = value
+        }
+
+    public override var bitcoinCore: BitcoinCore
     override var network: Network
 
     private val dashStorage: DashStorage
@@ -116,7 +123,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             NetworkType.MainNet -> {
 //                initialSyncUrl = "https://dash.horizontalsystems.xyz/apg"
                 initialSyncUrl = "https://chain.anwang.org/insight-api-safe/"
-                MainNetSafe(context)
+                mainNetSafe = MainNetSafe(context)
+                mainNetSafe!!
             }
             NetworkType.TestNet -> {
                 initialSyncUrl = "http://dash-testnet.horizontalsystems.xyz/apg"

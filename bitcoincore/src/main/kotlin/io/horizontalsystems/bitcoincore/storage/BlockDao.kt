@@ -38,6 +38,9 @@ interface BlockDao {
     @Query("SELECT * FROM Block WHERE height >= :fromHeight AND height <= :toHeight ORDER BY height ASC")
     fun getBlocksChunk(fromHeight: Int, toHeight: Int): List<Block>
 
+    @Query("SELECT * FROM Block WHERE height >= :fromHeight ORDER BY height ASC")
+    fun getBlocksChunk(fromHeight: Int): List<Block>
+
     @Query("SELECT * FROM Block WHERE headerHash = :hash limit 1")
     fun getBlockByHash(hash: ByteArray): Block?
 
@@ -64,5 +67,8 @@ interface BlockDao {
 
     @Query("SELECT block_timestamp FROM Block WHERE height >= :from AND height <= :to ORDER BY block_timestamp ASC")
     fun getTimestamps(from: Int, to: Int) : List<Long>
+
+    @Query("SELECT * FROM Block WHERE block_timestamp >= :timestamp ORDER BY height ASC")
+    fun getBlocksForTime(timestamp: Long) : List<Block>
 
 }
