@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore.managers
 
+import android.util.Log
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.KitState
 import io.horizontalsystems.bitcoincore.core.*

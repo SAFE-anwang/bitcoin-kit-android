@@ -532,6 +532,10 @@ class BitcoinCore(
         syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)
     }
 
+    fun stopDownload() {
+        initialBlockDownload.stopDownload()
+    }
+
     fun onEnterForeground() {
         connectionManager.onEnterForeground()
     }

@@ -186,4 +186,7 @@ class InitialBlockDownload(
         blockSyncer.updateCheckpoint(checkpoint)
     }
 
+    fun stopDownload() {
+        blockSyncer.downloadCompleted()
+    }
 }
