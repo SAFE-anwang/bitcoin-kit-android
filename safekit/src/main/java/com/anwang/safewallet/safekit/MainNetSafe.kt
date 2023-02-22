@@ -79,10 +79,8 @@ class MainNetSafe() : Network() {
 
     override val lastCheckpoint: Checkpoint
         get() = if (fallbackBlockDate == null) {
-            Log.e("longwen", "lastCheckpoint: ${super.lastCheckpoint}")
             super.lastCheckpoint
         } else {
-            Log.e("longwen", "lastCheckpoint: ${javaClass.simpleName}_${fallbackBlockDate}.checkpoint")
             Checkpoint("${javaClass.simpleName}_${fallbackBlockDate}.checkpoint")
         }
 }
