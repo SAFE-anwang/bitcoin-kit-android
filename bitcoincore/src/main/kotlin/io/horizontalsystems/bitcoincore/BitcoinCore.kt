@@ -525,6 +525,10 @@ class BitcoinCore(
         start()
     }
 
+    fun stop2() {
+        syncManager.stop()
+    }
+
     fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
         dataProvider.updateLastBlockInfo()
         val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)

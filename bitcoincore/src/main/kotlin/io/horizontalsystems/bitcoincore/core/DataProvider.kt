@@ -135,5 +135,10 @@ class DataProvider(
         lastBlockInfo = storage.lastBlock()?.let {
             blockInfo(it)
         }
+//        updateBalance()
+    }
+
+    fun updateBalance() {
+        balanceUpdateSubject.onNext(true)
     }
 }
