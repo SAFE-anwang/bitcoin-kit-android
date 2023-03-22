@@ -61,6 +61,7 @@ dependencies {
 
 //    api project(':bitcoincore')
     api project(':bitcoin-kit-android:bitcoincore')
+    api project(':bitcoin-kit-android:hodler')
     implementation files('libs/dashj-bls-0.15.3.jar')
     implementation 'de.sfuhrm:saphir-hash-jca:3.0.6'
 

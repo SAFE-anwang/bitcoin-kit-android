@@ -31,6 +31,7 @@ import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.hdwalletkit.HDExtendedKey
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.hodler.HodlerPlugin
 
 class BitcoinCashKit : AbstractKit {
     sealed class NetworkType {
@@ -143,7 +144,8 @@ class BitcoinCashKit : AbstractKit {
 
         blockValidatorSet.addBlockValidator(blockValidatorChain)
 
-        bitcoinCore = BitcoinCoreBuilder()
+        val coreBuilder = BitcoinCoreBuilder()
+        bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
             .setNetwork(network)
@@ -154,6 +156,7 @@ class BitcoinCashKit : AbstractKit {
             .setStorage(storage)
             .setInitialSyncApi(initialSyncApi)
             .setBlockValidator(blockValidatorSet)
+            .addPlugin(HodlerPlugin(coreBuilder.addressConverter, storage, BlockMedianTimeHelper(storage)))
 //            .setConnectionManager(connectionManager)
             .build()
 

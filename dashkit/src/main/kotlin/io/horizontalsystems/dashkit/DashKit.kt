@@ -6,6 +6,7 @@ import io.horizontalsystems.bitcoincore.AbstractKit
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.SyncMode
 import io.horizontalsystems.bitcoincore.BitcoinCoreBuilder
+import io.horizontalsystems.bitcoincore.blocks.BlockMedianTimeHelper
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorChain
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorSet
 import io.horizontalsystems.bitcoincore.blocks.validators.ProofOfWorkValidator
@@ -43,6 +44,7 @@ import io.horizontalsystems.dashkit.validators.DarkGravityWaveValidator
 import io.horizontalsystems.hdwalletkit.HDExtendedKey
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
+import io.horizontalsystems.hodler.HodlerPlugin
 import io.reactivex.Single
 
 class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
@@ -151,7 +153,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
 
         blockValidatorSet.addBlockValidator(blockValidatorChain)
 
-        bitcoinCore = BitcoinCoreBuilder()
+        val coreBuilder = BitcoinCoreBuilder()
+        bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
             .setNetwork(network)
@@ -164,6 +167,7 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             .setInitialSyncApi(initialSyncApi)
             .setTransactionInfoConverter(dashTransactionInfoConverter)
             .setBlockValidator(blockValidatorSet)
+            .addPlugin(HodlerPlugin(coreBuilder.addressConverter, coreStorage, BlockMedianTimeHelper(coreStorage)))
 //            .setConnectionManager(connectionManager)
             .build()
 

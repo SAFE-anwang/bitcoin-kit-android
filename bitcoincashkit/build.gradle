@@ -45,6 +45,7 @@ dependencies {
 
 //    api project(':bitcoincore')
     api project(':bitcoin-kit-android:bitcoincore')
+    api project(':bitcoin-kit-android:hodler')
 
 
     // Test helpers
