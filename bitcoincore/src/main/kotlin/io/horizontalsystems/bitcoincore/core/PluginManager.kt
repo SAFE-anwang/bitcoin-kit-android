@@ -72,18 +72,6 @@ class PluginManager : IRestoreKeyConverter {
         }
     }
 
-    fun maximumSpendLimit(pluginData: Map<Byte, IPluginData>): Long? {
-        return try {
-            pluginData.mapNotNull {
-                val plugin = checkNotNull(plugins[it.key])
-
-                plugin.maximumSpendLimit()
-            }.minOrNull()
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     override fun keysForApiRestore(publicKey: PublicKey): List<String> {
         return plugins.map { it.value.keysForApiRestore(publicKey) }.flatten().distinct()
     }
@@ -110,7 +98,6 @@ interface IPlugin {
     fun getInputSequence(output: TransactionOutput): Long
     fun parsePluginData(output: TransactionOutput, txTimestamp: Long): IPluginOutputData
     fun keysForApiRestore(publicKey: PublicKey): List<String>
-    fun maximumSpendLimit(): Long?
     fun validateAddress(address: Address)
 }
 

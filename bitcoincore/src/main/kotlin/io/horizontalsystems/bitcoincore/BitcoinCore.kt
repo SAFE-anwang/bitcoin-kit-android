@@ -661,6 +661,7 @@ class BitcoinCore(
             peerStatus["Status"] = if (peer.synced) "Synced" else "Not Synced"
             peerStatus["Host"] = peer.host
             peerStatus["Best Block"] = peer.announcedLastBlockHeight
+            peerStatus["User Agent"] = peer.subVersion
 
             peer.tasks.let { peerTasks ->
                 if (peerTasks.isEmpty()) {
@@ -736,10 +737,6 @@ class BitcoinCore(
         }
 
         return dustCalculator?.dust(scriptType) ?: throw CoreError.ReadOnlyCore
-    }
-
-    fun maximumSpendLimit(pluginData: Map<Byte, IPluginData>): Long? {
-        return pluginManager.maximumSpendLimit(pluginData)
     }
 
     fun getRawTransaction(transactionHash: String): String? {
