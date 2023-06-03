@@ -572,7 +572,7 @@ class BitcoinCore(
              , reverseHex: String?     // UPDATE FOR SAFE
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.string, value, feeRate, senderPay, sortType, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(

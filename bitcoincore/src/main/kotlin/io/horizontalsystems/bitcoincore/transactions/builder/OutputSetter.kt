@@ -49,7 +49,7 @@ class OutputSetter(private val transactionDataSorterFactory: ITransactionDataSor
         /**
          * UPDATE FOR SAFE - UNLOCKED_HEIGHT TRANSACTION OUTPUT
          */
-        val toAddress = transaction.recipientAddress.string
+        val toAddress = transaction.recipientAddress.stringValue
         val unlockedHeight = transaction.unlockedHeight
         if (unlockedHeight != null) {
             transaction.transaction.version = 103
