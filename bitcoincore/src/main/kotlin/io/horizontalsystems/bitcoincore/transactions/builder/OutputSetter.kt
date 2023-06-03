@@ -1,6 +1,5 @@
 package io.horizontalsystems.bitcoincore.transactions.builder
 
-import android.util.Log
 import io.horizontalsystems.bitcoincore.core.ITransactionDataSorterFactory
 import io.horizontalsystems.bitcoincore.extensions.hexToByteArray
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
@@ -22,15 +21,15 @@ class OutputSetter(private val transactionDataSorterFactory: ITransactionDataSor
                 for (index in 0 .. size) {
                     val step = 86400 * (lineLock!!.startMonth + lineLock!!.intervalMonth * index)
                     val unlockedHeight = (lineLock!!.lastHeight).plus( step )
-                    list.add(TransactionOutput(lineLock!!.lockedValue.toLong(), 0, it.lockingScript, it.scriptType, it.string, it.hash, null, unlockedHeight, "73616665".hexToByteArray()))
+                    list.add(TransactionOutput(lineLock!!.lockedValue.toLong(), 0, it.lockingScript, it.scriptType, it.stringValue, it.lockingScriptPayload, null, unlockedHeight, "73616665".hexToByteArray()))
                 }
             } else {
-                list.add(TransactionOutput(transaction.recipientValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+                list.add(TransactionOutput(transaction.recipientValue, 0, it.lockingScript, it.scriptType, it.stringValue, it.lockingScriptPayload))
             }
         }
 
         transaction.changeAddress?.let {
-            list.add(TransactionOutput(transaction.changeValue, 0, it.lockingScript, it.scriptType, it.string, it.hash))
+            list.add(TransactionOutput(transaction.changeValue, 0, it.lockingScript, it.scriptType, it.stringValue, it.lockingScriptPayload))
         }
 
         if (transaction.getPluginData().isNotEmpty()) {
@@ -45,7 +44,6 @@ class OutputSetter(private val transactionDataSorterFactory: ITransactionDataSor
         val sorted = transactionDataSorterFactory.sorter(sortType).sortOutputs(list)
         sorted.forEachIndexed { index, transactionOutput ->
             transactionOutput.index = index
-            Log.i("safe4", "transactionOutput: $transactionOutput")
         }
 
         /**

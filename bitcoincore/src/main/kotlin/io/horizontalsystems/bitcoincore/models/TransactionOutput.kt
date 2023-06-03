@@ -17,7 +17,8 @@ import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
  *  Variable    OutputScript         Script
  */
 
-@Entity(primaryKeys = ["transactionHash", "index"],
+@Entity(
+    primaryKeys = ["transactionHash", "index"],
     foreignKeys = [
         ForeignKey(
             entity = PublicKey::class,
@@ -25,15 +26,18 @@ import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
             childColumns = ["publicKeyPath"],
             onUpdate = ForeignKey.SET_NULL,
             onDelete = ForeignKey.SET_NULL,
-            deferred = true),
+            deferred = true
+        ),
         ForeignKey(
             entity = Transaction::class,
             parentColumns = ["hash"],
             childColumns = ["transactionHash"],
             onDelete = ForeignKey.CASCADE,
             onUpdate = ForeignKey.CASCADE,
-            deferred = true)
-    ])
+            deferred = true
+        )
+    ]
+)
 
 class TransactionOutput() {
 
@@ -46,12 +50,13 @@ class TransactionOutput() {
     var publicKeyPath: String? = null
     var changeOutput: Boolean = false
     var scriptType: ScriptType = ScriptType.UNKNOWN
-    var keyHash: ByteArray? = null
+    var lockingScriptPayload: ByteArray? = null
     var address: String? = null
     var failedToSpend = false
 
     var pluginId: Byte? = null
     var pluginData: String? = null
+
     @Ignore
     var signatureScriptFunction: ((List<ByteArray>) -> ByteArray)? = null
 
@@ -59,16 +64,24 @@ class TransactionOutput() {
     var unlockedHeight: Long? = null
     var reserve: ByteArray? = null
 
-    constructor(value: Long, index: Int, script: ByteArray, type: ScriptType = ScriptType.UNKNOWN, address: String? = null, keyHash: ByteArray? = null, publicKey: PublicKey? = null,
-                unlockedHeight: Long? = null,
-                reserve: ByteArray? = null
-    ): this() {
+
+    constructor(
+        value: Long,
+        index: Int,
+        script: ByteArray,
+        type: ScriptType = ScriptType.UNKNOWN,
+        address: String? = null,
+        lockingScriptPayload: ByteArray? = null,
+        publicKey: PublicKey? = null,
+        unlockedHeight: Long? = null,
+        reserve: ByteArray? = null
+    ) : this() {
         this.value = value
         this.lockingScript = script
         this.index = index
         this.scriptType = type
         this.address = address
-        this.keyHash = keyHash
+        this.lockingScriptPayload = lockingScriptPayload
         publicKey?.let { setPublicKey(it) }
 
         // UPDATE FOR SAFE TRANSACTION-OUTPUT

@@ -16,9 +16,9 @@ import io.horizontalsystems.bitcoincore.utils.IAddressConverter
 import io.horizontalsystems.bitcoincore.utils.Utils
 
 class HodlerPlugin(
-        private val addressConverter: IAddressConverter,
-        private val storage: IStorage,
-        private val blockMedianTimeHelper: BlockMedianTimeHelper
+    private val addressConverter: IAddressConverter,
+    private val storage: IStorage,
+    private val blockMedianTimeHelper: BlockMedianTimeHelper
 ) : IPlugin {
 
     companion object {
@@ -36,7 +36,7 @@ class HodlerPlugin(
             }
         }
 
-        val pubkeyHash = mutableTransaction.recipientAddress.hash
+        val pubkeyHash = mutableTransaction.recipientAddress.lockingScriptPayload
         val redeemScriptHash = Utils.sha256Hash160(redeemScript(lockTimeInterval, pubkeyHash))
         val newAddress = addressConverter.convert(redeemScriptHash, ScriptType.P2SH)
 
@@ -54,9 +54,9 @@ class HodlerPlugin(
         val redeemScriptHash = Utils.sha256Hash160(redeemScript)
 
         transaction.outputs.find {
-            it.keyHash?.contentEquals(redeemScriptHash) ?: false
+            it.lockingScriptPayload?.contentEquals(redeemScriptHash) ?: false
         }?.let { output ->
-            val addressString = addressConverter.convert(pubkeyHash, ScriptType.P2PKH).string
+            val addressString = addressConverter.convert(pubkeyHash, ScriptType.P2PKH).stringValue
 
             output.pluginId = id
             output.pluginData = HodlerOutputData(lockTimeInterval, addressString).serialize()
@@ -93,8 +93,12 @@ class HodlerPlugin(
             val redeemScript = redeemScript(lockTimeInterval, publicKey.publicKeyHash)
             val redeemScriptHash = Utils.sha256Hash160(redeemScript)
 
-            addressConverter.convert(redeemScriptHash, ScriptType.P2SH).string
+            addressConverter.convert(redeemScriptHash, ScriptType.P2SH).stringValue
         }
+    }
+
+    override fun bloomFilterElements(publicKey: PublicKey): List<ByteArray> {
+        return listOf()
     }
 
     override fun validateAddress(address: Address) {
@@ -104,7 +108,10 @@ class HodlerPlugin(
     }
 
     private fun redeemScript(lockTimeInterval: LockTimeInterval, pubkeyHash: ByteArray): ByteArray {
-        return OpCodes.push(lockTimeInterval.sequenceNumberAs3BytesLE) + byteArrayOf(OP_CHECKSEQUENCEVERIFY.toByte(), OP_DROP.toByte()) + OpCodes.p2pkhStart + OpCodes.push(pubkeyHash) + OpCodes.p2pkhEnd
+        return OpCodes.push(lockTimeInterval.sequenceNumberAs3BytesLE) + byteArrayOf(
+            OP_CHECKSEQUENCEVERIFY.toByte(),
+            OP_DROP.toByte()
+        ) + OpCodes.p2pkhStart + OpCodes.push(pubkeyHash) + OpCodes.p2pkhEnd
     }
 
     private fun lockTimeIntervalFrom(output: TransactionOutput): LockTimeInterval {

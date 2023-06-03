@@ -38,6 +38,7 @@ class BitcoinCoreBuilder {
     // required parameters
     private var context: Context? = null
     private var extendedKey: HDExtendedKey? = null
+    private var purpose: Purpose? = null
     private var network: Network? = null
     private var paymentAddressParser: PaymentAddressParser? = null
     private var storage: IStorage? = null
@@ -62,6 +63,11 @@ class BitcoinCoreBuilder {
 
     fun setExtendedKey(extendedKey: HDExtendedKey): BitcoinCoreBuilder {
         this.extendedKey = extendedKey
+        return this
+    }
+
+    fun setPurpose(purpose: Purpose): BitcoinCoreBuilder {
+        this.purpose = purpose
         return this
     }
 
@@ -138,6 +144,7 @@ class BitcoinCoreBuilder {
         val context = checkNotNull(this.context)
 //        val connectionManager = checkNotNull(this.connectionManager)
         val extendedKey = checkNotNull(this.extendedKey)
+        val purpose = checkNotNull(this.purpose)
         val network = checkNotNull(this.network)
         val paymentAddressParser = checkNotNull(this.paymentAddressParser)
         val storage = checkNotNull(this.storage)
@@ -150,8 +157,6 @@ class BitcoinCoreBuilder {
         val pluginManager = PluginManager()
         plugins.forEach { pluginManager.addPlugin(it) }
 
-        restoreKeyConverterChain.add(pluginManager)
-
         transactionInfoConverter.baseConverter = BaseTransactionInfoConverter(pluginManager)
 
         val unspentOutputProvider = UnspentOutputProvider(storage, confirmationsThreshold, pluginManager)
@@ -160,8 +165,6 @@ class BitcoinCoreBuilder {
 
         val connectionManager = ConnectionManager(context)
 
-        val purpose = extendedKey.info.purpose
-
         var privateWallet: IPrivateWallet? = null
         val publicKeyFetcher: IPublicKeyFetcher
         var multiAccountPublicKeyFetcher: IMultiAccountPublicKeyFetcher? = null
@@ -169,7 +172,7 @@ class BitcoinCoreBuilder {
         val bloomFilterProvider: IBloomFilterProvider
         val gapLimit = 20
 
-        if (!extendedKey.info.isPublic) {
+        if (!extendedKey.isPublic) {
             when (extendedKey.derivedType) {
                 HDExtendedKey.DerivedType.Master -> {
                     val wallet = Wallet(HDWallet(extendedKey.key, network.coinType, purpose), gapLimit)
@@ -281,7 +284,8 @@ class BitcoinCoreBuilder {
         var transactionCreator: TransactionCreator? = null
 
         if (privateWallet != null) {
-            val inputSigner = InputSigner(privateWallet, network)
+            val ecdsaInputSigner = EcdsaInputSigner(privateWallet, network)
+            val schnorrInputSigner = SchnorrInputSigner(privateWallet)
             val transactionSizeCalculatorInstance = TransactionSizeCalculator()
             val dustCalculatorInstance = DustCalculator(network.dustRelayTxFee, transactionSizeCalculatorInstance)
             val recipientSetter = RecipientSetter(addressConverter, pluginManager)
@@ -297,7 +301,7 @@ class BitcoinCoreBuilder {
                 transactionDataSorterFactory
             )
             val lockTimeSetter = LockTimeSetter(storage)
-            val signer = TransactionSigner(inputSigner)
+            val signer = TransactionSigner(ecdsaInputSigner, schnorrInputSigner)
             val transactionBuilder = TransactionBuilder(recipientSetter, outputSetter, inputSetter, signer, lockTimeSetter)
             transactionFeeCalculator = TransactionFeeCalculator(recipientSetter, inputSetter, addressConverter, publicKeyManager, purpose.scriptType)
             val transactionSendTimer = TransactionSendTimer(60)
@@ -591,7 +595,7 @@ class BitcoinCore(
         sortType: TransactionDataSortType
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.string, value, feeRate, senderPay, sortType, mapOf(), null, null) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), null, null) ?: throw CoreError.ReadOnlyCore
     }
 
     fun redeem(unspentOutput: UnspentOutput, address: String, feeRate: Int, sortType: TransactionDataSortType): FullTransaction {
@@ -599,7 +603,7 @@ class BitcoinCore(
     }
 
     fun receiveAddress(): String {
-        return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).string
+        return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).stringValue
     }
 
     fun receivePublicKey(): PublicKey {
@@ -630,7 +634,7 @@ class BitcoinCore(
 //                        ScriptType.P2PKH else
 //                        ScriptType.P2WPKH
 
-                val legacy = addressConverter.convert(pubKey.publicKeyHash, ScriptType.P2PKH).string
+                val legacy = addressConverter.convert(pubKey.publicKeyHash, ScriptType.P2PKH).stringValue
 //                    val wpkh = addressConverter.convert(pubKey.scriptHashP2WPKH, ScriptType.P2SH).string
 //                    val bechAddress = try {
 //                        addressConverter.convert(OpCodes.push(0) + OpCodes.push(pubKey.publicKeyHash), scriptType).string
