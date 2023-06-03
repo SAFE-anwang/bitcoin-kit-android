@@ -530,8 +530,15 @@ class BitcoinCore(
     }
 
     fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
-        dataProvider.updateLastBlockInfo()
         val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)
+        val lastBlock = storage.lastBlock()
+        if (lastBlock != null && lastBlock.height < checkpoint.block.height) {
+            storage.saveBlock(checkpoint.block)
+            checkpoint.additionalBlocks.forEach { block ->
+                storage.saveBlock(block)
+            }
+        }
+        dataProvider.updateLastBlockInfo()
         initialBlockDownload.updateCheckpoint(checkpoint)
         syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)
     }
