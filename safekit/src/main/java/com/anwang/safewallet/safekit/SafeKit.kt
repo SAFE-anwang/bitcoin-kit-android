@@ -153,6 +153,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         bitcoinCore = coreBuilder
                 .setContext(context)
                 .setExtendedKey(extendedKey)
+                .setPurpose(HDWallet.Purpose.BIP44)
                 .setNetwork(network)
                 .setPaymentAddressParser(paymentAddressParser)
                 .setPeerSize(peerSize)
