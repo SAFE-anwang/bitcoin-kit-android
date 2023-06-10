@@ -12,6 +12,7 @@ import io.horizontalsystems.bitcoinkit.MainNet
 import io.horizontalsystems.bitcoinkit.TestNet
 import io.horizontalsystems.dashkit.MainNetDash
 import io.horizontalsystems.dashkit.TestNetDash
+import io.horizontalsystems.ecash.MainNetECash
 import io.horizontalsystems.litecoinkit.MainNetLitecoin
 import io.horizontalsystems.litecoinkit.TestNetLitecoin
 import java.io.*
@@ -23,24 +24,23 @@ class BuildCheckpoints : CheckpointSyncer.Listener {
 
     private val syncers = mutableListOf<CheckpointSyncer>().also {
         // Bitcoin
-//        it.add(CheckpointSyncer(MainNet(), 2016, 1, this))
-//        it.add(CheckpointSyncer(TestNet(), 2016, 1, this))
-//
-//        // Bitcoin Cash
-//        it.add(CheckpointSyncer(MainNetBitcoinCash(), 147, 147, this))
-//        it.add(CheckpointSyncer(TestNetBitcoinCash(), 147, 147, this))
-//
-//        // Dash
-//        it.add(CheckpointSyncer(MainNetDash(), 24, 24, this))
-//        it.add(CheckpointSyncer(TestNetDash(), 24, 24, this))
-//
-//        // Litecoin
-//        it.add(CheckpointSyncer(MainNetLitecoin(), 2016, 2, this))
-//        it.add(CheckpointSyncer(TestNetLitecoin(), 2016, 2, this))
+        it.add(CheckpointSyncer(MainNet(), 2016, 1, this))
+        it.add(CheckpointSyncer(TestNet(), 2016, 1, this))
 
-        // Safe
-      //  it.add(CheckpointSyncer(MainNetSafe(), 2017, 2, this))
-      //  it.add(CheckpointSyncer(TestNetSafe(), 2017, 2, this))
+        // Bitcoin Cash
+        it.add(CheckpointSyncer(MainNetBitcoinCash(), 147, 147, this))
+        it.add(CheckpointSyncer(TestNetBitcoinCash(), 147, 147, this))
+
+        // Dash
+        it.add(CheckpointSyncer(MainNetDash(), 24, 24, this))
+        it.add(CheckpointSyncer(TestNetDash(), 24, 24, this))
+
+        // Litecoin
+        it.add(CheckpointSyncer(MainNetLitecoin(), 2016, 2, this))
+        it.add(CheckpointSyncer(TestNetLitecoin(), 2016, 2, this))
+
+        // Ecash
+        it.add(CheckpointSyncer(MainNetECash(), 147, 147, this))
     }
 
     fun build(checkpoint: Block) {
@@ -110,7 +110,8 @@ class BuildCheckpoints : CheckpointSyncer.Listener {
             is TestNetLitecoin -> "litecoinkit"
             is MainNetSafe,
             is TestNetSafe -> "safekit"
-            else -> throw Exception("Invalid network")
+            is MainNetECash -> "ecashkit"
+            else -> throw Exception("Invalid network: ${network.javaClass.name}")
         }
     }
 }

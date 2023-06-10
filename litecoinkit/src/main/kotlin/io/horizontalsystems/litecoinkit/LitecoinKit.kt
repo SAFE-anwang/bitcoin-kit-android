@@ -15,6 +15,7 @@ import io.horizontalsystems.bitcoincore.managers.*
 import io.horizontalsystems.bitcoincore.network.Network
 import io.horizontalsystems.bitcoincore.storage.CoreDatabase
 import io.horizontalsystems.bitcoincore.storage.Storage
+import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.bitcoincore.utils.SegwitAddressConverter
@@ -44,7 +45,6 @@ class LitecoinKit : AbstractKit {
 
     constructor(
         context: Context,
-//        connectionManager: ConnectionManager,
         words: List<String>,
         passphrase: String,
         walletId: String,
@@ -53,11 +53,10 @@ class LitecoinKit : AbstractKit {
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6,
         purpose: Purpose = Purpose.BIP44
-    ) : this(context, /*connectionManager,*/ Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose)
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose)
 
     constructor(
         context: Context,
-//        connectionManager: ConnectionManager,
         seed: ByteArray,
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
@@ -65,7 +64,7 @@ class LitecoinKit : AbstractKit {
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6,
         purpose: Purpose = Purpose.BIP44
-    ) : this(context, /*connectionManager,*/ HDExtendedKey(seed, purpose), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+    ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -79,15 +78,14 @@ class LitecoinKit : AbstractKit {
      */
     constructor(
         context: Context,
-//        connectionManager: ConnectionManager,
         extendedKey: HDExtendedKey,
+        purpose: Purpose,
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
         peerSize: Int = 10,
         syncMode: SyncMode = SyncMode.Api(),
         confirmationsThreshold: Int = 6
     ) {
-        val purpose = extendedKey.info.purpose
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode, purpose))
         val storage = Storage(database)
         var initialSyncUrl = ""
@@ -131,6 +129,7 @@ class LitecoinKit : AbstractKit {
         bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
+            .setPurpose(purpose)
             .setNetwork(network)
             .setPaymentAddressParser(paymentAddressParser)
             .setPeerSize(peerSize)
@@ -140,7 +139,6 @@ class LitecoinKit : AbstractKit {
             .setInitialSyncApi(initialSyncApi)
             .setBlockValidator(blockValidatorSet)
             .addPlugin(HodlerPlugin(coreBuilder.addressConverter, storage, BlockMedianTimeHelper(storage)))
-//            .setConnectionManager(connectionManager)
             .build()
 
         //  extending bitcoinCore
@@ -158,7 +156,10 @@ class LitecoinKit : AbstractKit {
                 bitcoinCore.addRestoreKeyConverter(Bip49RestoreKeyConverter(base58AddressConverter))
             }
             Purpose.BIP84 -> {
-                bitcoinCore.addRestoreKeyConverter(KeyHashRestoreKeyConverter())
+                bitcoinCore.addRestoreKeyConverter(KeyHashRestoreKeyConverter(ScriptType.P2WPKH))
+            }
+            Purpose.BIP86 -> {
+                bitcoinCore.addRestoreKeyConverter(KeyHashRestoreKeyConverter(ScriptType.P2TR))
             }
         }
     }

@@ -148,6 +148,7 @@ class BitcoinCashKit : AbstractKit {
         bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
+            .setPurpose(Purpose.BIP44)
             .setNetwork(network)
             .setPaymentAddressParser(paymentAddressParser)
             .setPeerSize(peerSize)

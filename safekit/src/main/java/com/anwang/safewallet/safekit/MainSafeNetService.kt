@@ -1,6 +1,7 @@
 package com.anwang.safewallet.safekit
 
 import android.content.Context
+import com.anwang.safewallet.safekit.netwok.RetrofitUtils
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
@@ -19,33 +20,34 @@ class MainSafeNetService(val context: Context, val mainNetSafe: MainNetSafe) {
 
     private val logger = Logger.getLogger("MainSafeNetService")
     private val service: SafeNetServiceApi
-    private val gson: Gson
+    private val gson: Gson = GsonBuilder()
+        .setLenient()
+        .create()
 
     private val url: String = "https://chain.anwang.org/"
     private val sp = context.getSharedPreferences("MainSafeNet", Context.MODE_PRIVATE)
 
     init {
-        val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+        /*val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
             override fun log(message: String) {
                 logger.info(message)
             }
-        }).setLevel(HttpLoggingInterceptor.Level.BASIC)
+        }).setLevel(HttpLoggingInterceptor.Level.BASIC)*/
 
-        val httpClient = NetworkUtils.getUnsafeOkHttpClient().newBuilder()
+        /*val httpClient = NetworkUtils.getUnsafeOkHttpClient().newBuilder()
             .addInterceptor(loggingInterceptor)
 
-        gson = GsonBuilder()
-            .setLenient()
-            .create()
+        val httpClient = RetrofitUtils.build(url)
+            .addInterceptor(loggingInterceptor)*/
 
-        val retrofit = Retrofit.Builder()
+        /*val retrofit = Retrofit.Builder()
             .baseUrl(url)
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(gson))
             .client(httpClient.build())
-            .build()
+            .build()*/
 
-        service = retrofit.create(SafeNetServiceApi::class.java)
+        service = RetrofitUtils.build(url).create(SafeNetServiceApi::class.java)
 
         getSeed()
     }

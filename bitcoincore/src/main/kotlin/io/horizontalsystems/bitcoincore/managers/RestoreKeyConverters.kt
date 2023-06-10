@@ -42,7 +42,7 @@ class RestoreKeyConverterChain : IRestoreKeyConverter {
 class Bip44RestoreKeyConverter(private val addressConverter: IAddressConverter) : IRestoreKeyConverter {
 
     override fun keysForApiRestore(publicKey: PublicKey): List<String> {
-        val legacyAddress = addressConverter.convert(publicKey, ScriptType.P2PKH).string
+        val legacyAddress = addressConverter.convert(publicKey, ScriptType.P2PKH).stringValue
 
         return listOf(legacyAddress)
     }
@@ -55,7 +55,7 @@ class Bip44RestoreKeyConverter(private val addressConverter: IAddressConverter) 
 class Bip49RestoreKeyConverter(private val addressConverter: IAddressConverter) : IRestoreKeyConverter {
 
     override fun keysForApiRestore(publicKey: PublicKey): List<String> {
-        val wpkhShAddress = addressConverter.convert(publicKey, ScriptType.P2WPKHSH).string
+        val wpkhShAddress = addressConverter.convert(publicKey, ScriptType.P2WPKHSH).stringValue
 
         return listOf(wpkhShAddress)
     }
@@ -69,7 +69,7 @@ class Bip49RestoreKeyConverter(private val addressConverter: IAddressConverter) 
 class Bip84RestoreKeyConverter(private val addressConverter: IAddressConverter) : IRestoreKeyConverter {
 
     override fun keysForApiRestore(publicKey: PublicKey): List<String> {
-        val segwitAddress = addressConverter.convert(publicKey, ScriptType.P2WPKH).string
+        val segwitAddress = addressConverter.convert(publicKey, ScriptType.P2WPKH).stringValue
 
         return listOf(segwitAddress)
     }
@@ -79,12 +79,33 @@ class Bip84RestoreKeyConverter(private val addressConverter: IAddressConverter) 
     }
 }
 
-class KeyHashRestoreKeyConverter : IRestoreKeyConverter {
+class Bip86RestoreKeyConverter(private val addressConverter: IAddressConverter) : IRestoreKeyConverter {
+
     override fun keysForApiRestore(publicKey: PublicKey): List<String> {
-        return listOf(publicKey.publicKeyHash.toHexString())
+        val taprootAddress = addressConverter.convert(publicKey, ScriptType.P2TR).stringValue
+
+        return listOf(taprootAddress)
     }
 
     override fun bloomFilterElements(publicKey: PublicKey): List<ByteArray> {
-       return listOf(publicKey.publicKeyHash)
+        return listOf(publicKey.convertedForP2TR)
+    }
+}
+
+class KeyHashRestoreKeyConverter(
+    private val scriptType: ScriptType
+) : IRestoreKeyConverter {
+    override fun keysForApiRestore(publicKey: PublicKey): List<String> {
+        return if (scriptType == ScriptType.P2TR)
+            listOf(publicKey.convertedForP2TR.toHexString())
+        else
+            listOf(publicKey.publicKeyHash.toHexString())
+    }
+
+    override fun bloomFilterElements(publicKey: PublicKey): List<ByteArray> {
+        return if (scriptType == ScriptType.P2TR)
+            listOf(publicKey.convertedForP2TR)
+        else
+            listOf(publicKey.publicKeyHash)
     }
 }

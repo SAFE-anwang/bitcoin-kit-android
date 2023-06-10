@@ -16,14 +16,13 @@ import io.horizontalsystems.bitcoincore.utils.IAddressConverter
 import io.horizontalsystems.bitcoincore.utils.Utils
 
 class HodlerPlugin(
-        private val addressConverter: IAddressConverter,
-        private val storage: IStorage,
-        private val blockMedianTimeHelper: BlockMedianTimeHelper
+    private val addressConverter: IAddressConverter,
+    private val storage: IStorage,
+    private val blockMedianTimeHelper: BlockMedianTimeHelper
 ) : IPlugin {
 
     companion object {
         const val id = OP_1.toByte()
-        private const val limit = 50_000_000L
     }
 
     override val id = HodlerPlugin.id
@@ -35,13 +34,9 @@ class HodlerPlugin(
             check(mutableTransaction.recipientAddress.scriptType == ScriptType.P2PKH) {
                 "Locking transaction is available only for PKH addresses"
             }
-
-            check(mutableTransaction.recipientValue <= limit) {
-                "The maximum amount allowed for locking is $limit"
-            }
         }
 
-        val pubkeyHash = mutableTransaction.recipientAddress.hash
+        val pubkeyHash = mutableTransaction.recipientAddress.lockingScriptPayload
         val redeemScriptHash = Utils.sha256Hash160(redeemScript(lockTimeInterval, pubkeyHash))
         val newAddress = addressConverter.convert(redeemScriptHash, ScriptType.P2SH)
 
@@ -59,9 +54,9 @@ class HodlerPlugin(
         val redeemScriptHash = Utils.sha256Hash160(redeemScript)
 
         transaction.outputs.find {
-            it.keyHash?.contentEquals(redeemScriptHash) ?: false
+            it.lockingScriptPayload?.contentEquals(redeemScriptHash) ?: false
         }?.let { output ->
-            val addressString = addressConverter.convert(pubkeyHash, ScriptType.P2PKH).string
+            val addressString = addressConverter.convert(pubkeyHash, ScriptType.P2PKH).stringValue
 
             output.pluginId = id
             output.pluginData = HodlerOutputData(lockTimeInterval, addressString).serialize()
@@ -98,13 +93,12 @@ class HodlerPlugin(
             val redeemScript = redeemScript(lockTimeInterval, publicKey.publicKeyHash)
             val redeemScriptHash = Utils.sha256Hash160(redeemScript)
 
-            addressConverter.convert(redeemScriptHash, ScriptType.P2SH).string
+            addressConverter.convert(redeemScriptHash, ScriptType.P2SH).stringValue
         }
     }
 
-    // The maximum lock amount is 0.5 bitcoins
-    override fun maximumSpendLimit(): Long? {
-        return limit
+    override fun bloomFilterElements(publicKey: PublicKey): List<ByteArray> {
+        return listOf()
     }
 
     override fun validateAddress(address: Address) {
@@ -114,7 +108,10 @@ class HodlerPlugin(
     }
 
     private fun redeemScript(lockTimeInterval: LockTimeInterval, pubkeyHash: ByteArray): ByteArray {
-        return OpCodes.push(lockTimeInterval.sequenceNumberAs3BytesLE) + byteArrayOf(OP_CHECKSEQUENCEVERIFY.toByte(), OP_DROP.toByte()) + OpCodes.p2pkhStart + OpCodes.push(pubkeyHash) + OpCodes.p2pkhEnd
+        return OpCodes.push(lockTimeInterval.sequenceNumberAs3BytesLE) + byteArrayOf(
+            OP_CHECKSEQUENCEVERIFY.toByte(),
+            OP_DROP.toByte()
+        ) + OpCodes.p2pkhStart + OpCodes.push(pubkeyHash) + OpCodes.p2pkhEnd
     }
 
     private fun lockTimeIntervalFrom(output: TransactionOutput): LockTimeInterval {
