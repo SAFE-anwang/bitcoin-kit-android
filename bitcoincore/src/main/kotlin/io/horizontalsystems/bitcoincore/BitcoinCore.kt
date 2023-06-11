@@ -38,6 +38,7 @@ class BitcoinCoreBuilder {
     // required parameters
     private var context: Context? = null
     private var extendedKey: HDExtendedKey? = null
+    private var purpose: Purpose? = null
     private var network: Network? = null
     private var paymentAddressParser: PaymentAddressParser? = null
     private var storage: IStorage? = null
@@ -62,6 +63,11 @@ class BitcoinCoreBuilder {
 
     fun setExtendedKey(extendedKey: HDExtendedKey): BitcoinCoreBuilder {
         this.extendedKey = extendedKey
+        return this
+    }
+
+    fun setPurpose(purpose: Purpose): BitcoinCoreBuilder {
+        this.purpose = purpose
         return this
     }
 
@@ -138,6 +144,7 @@ class BitcoinCoreBuilder {
         val context = checkNotNull(this.context)
 //        val connectionManager = checkNotNull(this.connectionManager)
         val extendedKey = checkNotNull(this.extendedKey)
+        val purpose = checkNotNull(this.purpose)
         val network = checkNotNull(this.network)
         val paymentAddressParser = checkNotNull(this.paymentAddressParser)
         val storage = checkNotNull(this.storage)
@@ -160,8 +167,6 @@ class BitcoinCoreBuilder {
 
         val connectionManager = ConnectionManager(context)
 
-        val purpose = extendedKey.info.purpose
-
         var privateWallet: IPrivateWallet? = null
         val publicKeyFetcher: IPublicKeyFetcher
         var multiAccountPublicKeyFetcher: IMultiAccountPublicKeyFetcher? = null
@@ -169,7 +174,7 @@ class BitcoinCoreBuilder {
         val bloomFilterProvider: IBloomFilterProvider
         val gapLimit = 20
 
-        if (!extendedKey.info.isPublic) {
+        if (!extendedKey.isPublic) {
             when (extendedKey.derivedType) {
                 HDExtendedKey.DerivedType.Master -> {
                     val wallet = Wallet(HDWallet(extendedKey.key, network.coinType, purpose), gapLimit)
