@@ -2,13 +2,9 @@ package io.horizontalsystems.bitcoincore.managers
 
 import com.eclipsesource.json.Json
 import com.eclipsesource.json.JsonValue
-import io.horizontalsystems.bitcoincore.utils.NetworkUtils
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.BufferedOutputStream
-import java.io.BufferedWriter
-import java.io.IOException
-import java.io.OutputStreamWriter
+import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -18,7 +14,7 @@ class ApiManager(private val host: String) {
     private val logger = Logger.getLogger("ApiManager")
 
     @Throws
-    fun get(resource: String): JsonValue {
+    fun get(resource: String): InputStream? {
         val url = "$host/$resource"
 
         logger.info("Fetching $url")
@@ -31,9 +27,6 @@ class ApiManager(private val host: String) {
                         readTimeout = 60000
                         setRequestProperty("Accept", "application/json")
                     }.getInputStream()
-                    .use {
-                        Json.parse(it.bufferedReader())
-                    }
         } catch (exception: IOException) {
             throw Exception("${exception.javaClass.simpleName}: $host")
         }
@@ -64,20 +57,16 @@ class ApiManager(private val host: String) {
         }
     }
 
-    fun doOkHttpGet(safeCall: Boolean, uri: String): JsonValue {
+    fun doOkHttpGet(uri: String): JsonValue {
 
         val url = "$host/$uri"
 
         try {
-            val httpClient: OkHttpClient = if (!safeCall)
-                NetworkUtils.getUnsafeOkHttpClient()
-            else {
-                OkHttpClient.Builder()
-                        .apply {
-                            connectTimeout(5000, TimeUnit.MILLISECONDS)
-                            readTimeout(60000, TimeUnit.MILLISECONDS)
-                        }.build()
-            }
+            val httpClient: OkHttpClient = OkHttpClient.Builder()
+                .apply {
+                    connectTimeout(5000, TimeUnit.MILLISECONDS)
+                    readTimeout(60000, TimeUnit.MILLISECONDS)
+                }.build()
 
             httpClient.newCall(Request.Builder().url(url).build())
                     .execute()

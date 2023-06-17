@@ -157,8 +157,6 @@ class BitcoinCoreBuilder {
         val pluginManager = PluginManager()
         plugins.forEach { pluginManager.addPlugin(it) }
 
-        restoreKeyConverterChain.add(pluginManager)
-
         transactionInfoConverter.baseConverter = BaseTransactionInfoConverter(pluginManager)
 
         val unspentOutputProvider = UnspentOutputProvider(storage, confirmationsThreshold, pluginManager)
@@ -286,7 +284,8 @@ class BitcoinCoreBuilder {
         var transactionCreator: TransactionCreator? = null
 
         if (privateWallet != null) {
-            val inputSigner = InputSigner(privateWallet, network)
+            val ecdsaInputSigner = EcdsaInputSigner(privateWallet, network)
+            val schnorrInputSigner = SchnorrInputSigner(privateWallet)
             val transactionSizeCalculatorInstance = TransactionSizeCalculator()
             val dustCalculatorInstance = DustCalculator(network.dustRelayTxFee, transactionSizeCalculatorInstance)
             val recipientSetter = RecipientSetter(addressConverter, pluginManager)
@@ -302,7 +301,7 @@ class BitcoinCoreBuilder {
                 transactionDataSorterFactory
             )
             val lockTimeSetter = LockTimeSetter(storage)
-            val signer = TransactionSigner(inputSigner)
+            val signer = TransactionSigner(ecdsaInputSigner, schnorrInputSigner)
             val transactionBuilder = TransactionBuilder(recipientSetter, outputSetter, inputSetter, signer, lockTimeSetter)
             transactionFeeCalculator = TransactionFeeCalculator(recipientSetter, inputSetter, addressConverter, publicKeyManager, purpose.scriptType)
             val transactionSendTimer = TransactionSendTimer(60)
@@ -535,8 +534,15 @@ class BitcoinCore(
     }
 
     fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
-        dataProvider.updateLastBlockInfo()
         val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)
+        val lastBlock = storage.lastBlock()
+        if (lastBlock != null && lastBlock.height < checkpoint.block.height) {
+            storage.saveBlock(checkpoint.block)
+            checkpoint.additionalBlocks.forEach { block ->
+                storage.saveBlock(block)
+            }
+        }
+        dataProvider.updateLastBlockInfo()
         initialBlockDownload.updateCheckpoint(checkpoint)
         syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)
     }
@@ -573,7 +579,7 @@ class BitcoinCore(
              , reverseHex: String?     // UPDATE FOR SAFE
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.string, value, feeRate, senderPay, sortType, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(
@@ -596,7 +602,7 @@ class BitcoinCore(
         sortType: TransactionDataSortType
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.string, value, feeRate, senderPay, sortType, mapOf(), null, null) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), null, null) ?: throw CoreError.ReadOnlyCore
     }
 
     fun redeem(unspentOutput: UnspentOutput, address: String, feeRate: Int, sortType: TransactionDataSortType): FullTransaction {
@@ -604,7 +610,7 @@ class BitcoinCore(
     }
 
     fun receiveAddress(): String {
-        return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).string
+        return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).stringValue
     }
 
     fun receivePublicKey(): PublicKey {
@@ -635,7 +641,7 @@ class BitcoinCore(
 //                        ScriptType.P2PKH else
 //                        ScriptType.P2WPKH
 
-                val legacy = addressConverter.convert(pubKey.publicKeyHash, ScriptType.P2PKH).string
+                val legacy = addressConverter.convert(pubKey.publicKeyHash, ScriptType.P2PKH).stringValue
 //                    val wpkh = addressConverter.convert(pubKey.scriptHashP2WPKH, ScriptType.P2SH).string
 //                    val bechAddress = try {
 //                        addressConverter.convert(OpCodes.push(0) + OpCodes.push(pubKey.publicKeyHash), scriptType).string
@@ -666,6 +672,7 @@ class BitcoinCore(
             peerStatus["Status"] = if (peer.synced) "Synced" else "Not Synced"
             peerStatus["Host"] = peer.host
             peerStatus["Best Block"] = peer.announcedLastBlockHeight
+            peerStatus["User Agent"] = peer.subVersion
 
             peer.tasks.let { peerTasks ->
                 if (peerTasks.isEmpty()) {
@@ -741,10 +748,6 @@ class BitcoinCore(
         }
 
         return dustCalculator?.dust(scriptType) ?: throw CoreError.ReadOnlyCore
-    }
-
-    fun maximumSpendLimit(pluginData: Map<Byte, IPluginData>): Long? {
-        return pluginManager.maximumSpendLimit(pluginData)
     }
 
     fun getRawTransaction(transactionHash: String): String? {

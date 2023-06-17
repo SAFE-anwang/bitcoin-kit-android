@@ -144,6 +144,10 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
         store.block.insert(block)
     }
 
+    override fun setBlockPartial(headerHash: ByteArray) {
+        store.block.setBlockPartial(headerHash)
+    }
+
     override fun lastBlock(): Block? {
         return store.block.getLastBlock()
     }
@@ -442,6 +446,10 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
     }
 
     // PublicKey
+
+    override fun getPublicKeyByHashP2TR(hashP2TR: ByteArray): PublicKey? {
+       return store.publicKey.getByHashP2TR(hashP2TR)
+    }
 
     override fun getPublicKeyByScriptHashForP2PWKH(keyHash: ByteArray): PublicKey? {
         return store.publicKey.getByScriptHashWPKH(keyHash)

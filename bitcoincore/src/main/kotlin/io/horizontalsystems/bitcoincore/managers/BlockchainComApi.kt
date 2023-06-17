@@ -17,27 +17,31 @@ class BlockchainComApi(transactionApiUrl: String, blocksApiUrl: String) : IIniti
 
         val transactionsArray = json["txs"].asArray()
 
-        return transactionsArray.map { transactionJson ->
+        return transactionsArray.mapNotNull { transactionJson ->
             val transaction = transactionJson.asObject()
-            val outputs = transaction["out"].asArray().map { outputJson ->
-                val output = outputJson.asObject()
+            //block_height can be null, when transaction is in mempool
+            if (transaction["block_height"].isNumber) {
+                val outputs = transaction["out"].asArray().map { outputJson ->
+                    val output = outputJson.asObject()
 
-                TransactionOutputResponse(
-                    output["script"].asString(),
-                    output["addr"]?.asString()
+                    TransactionOutputResponse(
+                        output["script"].asString(),
+                        output["addr"]?.asString()
+                    )
+                }
+                TransactionResponse(
+                    transaction["block_height"].asInt(),
+                    outputs
                 )
+            } else {
+                null
             }
-
-            TransactionResponse(
-                transaction["block_height"].asInt(),
-                outputs
-            )
         }
     }
 
     private fun blocks(heights: List<Int>): List<BlockResponse> {
         val joinedHeights = heights.sorted().joinToString(",") { it.toString() }
-        val blocks = blocksApiManager.doOkHttpGet(false, "hashes?numbers=$joinedHeights").asArray()
+        val blocks = blocksApiManager.doOkHttpGet("hashes?numbers=$joinedHeights").asArray()
 
         return blocks.map { blockJson ->
             val block = blockJson.asObject()
@@ -117,7 +121,7 @@ class BlockchainComApi(transactionApiUrl: String, blocksApiUrl: String) : IIniti
         fun requestInQueue(apiManager: ApiManager, path: String): JsonValue {
             val callable = Callable {
                 Thread.sleep(500)
-                apiManager.doOkHttpGet(false, path)
+                apiManager.doOkHttpGet(path)
             }
 
             return executor.submit(callable).get()

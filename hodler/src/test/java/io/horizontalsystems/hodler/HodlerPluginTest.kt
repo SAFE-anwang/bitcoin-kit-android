@@ -49,7 +49,7 @@ class HodlerPluginTest {
         val pluginData = mock<IPluginData>()
 
         assertThrows<IllegalStateException> {
-            hodlerPlugin.processOutputs(mutableTransaction, pluginData)
+            hodlerPlugin.processOutputs(mutableTransaction, pluginData, false)
         }
     }
 
@@ -60,21 +60,8 @@ class HodlerPluginTest {
         whenever(mutableTransaction.recipientAddress).thenReturn(recipientAddress)
         whenever(recipientAddress.scriptType).thenReturn(ScriptType.P2SH)
 
-        assertThrows<IllegalStateException> {
-            hodlerPlugin.processOutputs(mutableTransaction, pluginData)
-        }
-    }
-
-    @Test
-    fun processOutputs_lockingMoreThanLimit() {
-        val pluginData = HodlerData(LockTimeInterval.hour)
-
-        whenever(mutableTransaction.recipientAddress).thenReturn(recipientAddress)
-        whenever(recipientAddress.scriptType).thenReturn(ScriptType.P2PKH)
-        whenever(mutableTransaction.recipientValue).thenReturn(50_000_001)
-
-        assertThrows<IllegalStateException> {
-            hodlerPlugin.processOutputs(mutableTransaction, pluginData)
+        assertThrows<java.lang.IllegalStateException> {
+            hodlerPlugin.processOutputs(mutableTransaction, pluginData, false)
         }
     }
 
@@ -92,11 +79,14 @@ class HodlerPluginTest {
         whenever(recipientAddress.hash).thenReturn(pubkeyHash)
         whenever(addressConverter.convert(redeemScriptHash, ScriptType.P2SH)).thenReturn(shAddress)
 
-        hodlerPlugin.processOutputs(mutableTransaction, pluginData)
+        hodlerPlugin.processOutputs(mutableTransaction, pluginData, false)
 
         verify(addressConverter).convert(redeemScriptHash, ScriptType.P2SH)
         verify(mutableTransaction).recipientAddress = shAddress
-        verify(mutableTransaction).addPluginData(HodlerPlugin.id, ("02" + "0700" + "14" + "8c005bb22d520f6a108b108242efcbe5c19315f5").hexToByteArray())
+        verify(mutableTransaction).addPluginData(
+            HodlerPlugin.id,
+            ("02" + "0700" + "14" + "8c005bb22d520f6a108b108242efcbe5c19315f5").hexToByteArray()
+        )
     }
 
     val fullTransaction = mock<FullTransaction>()
@@ -123,7 +113,7 @@ class HodlerPluginTest {
         whenever(chunkLockTimeInterval.data).thenReturn("0700".hexToByteArray())
         whenever(chunkPubkeyHash.data).thenReturn(pubkeyHash)
         whenever(fullTransaction.outputs).thenReturn(listOf(recipientOutput))
-        whenever(recipientOutput.keyHash).thenReturn(redeemScriptHash)
+        whenever(recipientOutput.lockingScriptPayload).thenReturn(redeemScriptHash)
         whenever(addressConverter.convert(pubkeyHash, ScriptType.P2PKH)).thenReturn(originalAddress)
         whenever(originalAddress.string).thenReturn(originalAddressString)
         whenever(storage.getPublicKeyByKeyOrKeyHash(pubkeyHash)).thenReturn(publicKey)

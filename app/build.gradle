@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 29
@@ -55,6 +54,7 @@ dependencies {
     implementation project(':dashkit')
     implementation project(':bitcoincashkit')
     implementation project(':litecoinkit')
+    implementation project(':ecashkit')
     implementation project(':safekit')
 
 }

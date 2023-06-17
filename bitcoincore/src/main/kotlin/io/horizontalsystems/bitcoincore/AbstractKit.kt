@@ -136,10 +136,6 @@ abstract class AbstractKit {
         return bitcoinCore.minimumSpendableValue(address)
     }
 
-    fun maximumSpendLimit(pluginData: Map<Byte, IPluginData>): Long? {
-        return bitcoinCore.maximumSpendLimit(pluginData)
-    }
-
     fun getRawTransaction(transactionHash: String): String? {
         return bitcoinCore.getRawTransaction(transactionHash)
     }

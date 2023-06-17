@@ -79,10 +79,6 @@ class InputSetter(
         val previousOutput = unspentOutput.output
         val transactionInput = TransactionInput(previousOutput.transactionHash, previousOutput.index.toLong())
 
-        if (unspentOutput.output.scriptType == ScriptType.P2WPKH) {
-            unspentOutput.output.keyHash = unspentOutput.output.keyHash?.drop(2)?.toByteArray()
-        }
-
         return InputToSign(transactionInput, previousOutput, unspentOutput.publicKey)
     }
 }
