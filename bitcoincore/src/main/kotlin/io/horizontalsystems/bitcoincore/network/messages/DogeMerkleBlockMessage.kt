@@ -18,7 +18,7 @@ import io.horizontalsystems.bitcoincore.storage.BlockHeader
  *  VarInt      flagsCount      Number of bytes of flag bits
  *  Variable    flagsBits       Flag bits packed 8 per byte, least significant bit first
  */
-class MerkleBlockMessage(
+/*class MerkleBlockMessage(
         var header: BlockHeader,
         var txCount: Int,
         var hashCount: Int,
@@ -33,12 +33,14 @@ class MerkleBlockMessage(
     override fun toString(): String {
         return "MerkleBlockMessage(blockHash=$blockHash, hashesSize=${hashes.size})"
     }
-}
+}*/
 
-class MerkleBlockMessageParser(private val blockHeaderParser: BlockHeaderParser) : IMessageParser {
+class DogeMerkleBlockMessageParser(private val blockHeaderParser: BlockHeaderParser) : IMessageParser {
     override val command = "merkleblock"
 
     override fun parseMessage(input: BitcoinInputMarkable): IMessage {
+        Log.w("Peer[", "parseMessage ${input.readBytes(4).toHexString()}, count=${input.count}")
+        input.reset()
         val header = blockHeaderParser.parse(input)
         val txCount = input.readInt()
 
@@ -50,7 +52,7 @@ class MerkleBlockMessageParser(private val blockHeaderParser: BlockHeaderParser)
 
         val flagsCount = input.readVarInt().toInt()
         val flags = input.readBytes(flagsCount)
-        Log.w("Peer[", "MerkleBlockMessage txCount=$txCount, hashCount=$hashCount, flagsCount=$flagsCount, flags=${flags.toHexString()}")
+
         return MerkleBlockMessage(header, txCount, hashCount, hashes, flagsCount, flags)
     }
 }
