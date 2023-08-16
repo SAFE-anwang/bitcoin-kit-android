@@ -50,7 +50,7 @@ class DogecoinKit : AbstractKit {
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
         peerSize: Int = 10,
-        syncMode: SyncMode = SyncMode.Api(),
+        syncMode: SyncMode = SyncMode.Full(),
         confirmationsThreshold: Int = 6,
         purpose: Purpose = Purpose.BIP44
     ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose)
@@ -61,7 +61,7 @@ class DogecoinKit : AbstractKit {
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
         peerSize: Int = 10,
-        syncMode: SyncMode = SyncMode.Api(),
+        syncMode: SyncMode = SyncMode.Full(),
         confirmationsThreshold: Int = 6,
         purpose: Purpose = Purpose.BIP44
     ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold)
@@ -83,7 +83,7 @@ class DogecoinKit : AbstractKit {
         walletId: String,
         networkType: NetworkType = NetworkType.MainNet,
         peerSize: Int = 10,
-        syncMode: SyncMode = SyncMode.Api(),
+        syncMode: SyncMode = SyncMode.Full(),
         confirmationsThreshold: Int = 6
     ) {
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode, purpose))
