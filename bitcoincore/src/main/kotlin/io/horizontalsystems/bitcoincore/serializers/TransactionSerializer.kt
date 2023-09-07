@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore.serializers
 
+import android.util.Log
 import io.horizontalsystems.bitcoincore.extensions.toHexString
 import io.horizontalsystems.bitcoincore.io.BitcoinInputMarkable
 import io.horizontalsystems.bitcoincore.io.BitcoinOutput
@@ -57,6 +58,7 @@ object TransactionSerializer {
         val header = transaction.header
         val buffer = BitcoinOutput()
         buffer.writeInt(header.version)
+        Log.e("dogecoin", "version=${header.version}, ${header.hash.toHexString()}")
 
         if (header.segwit && withWitness) {
             buffer.writeByte(0) // marker 0x00
@@ -77,6 +79,8 @@ object TransactionSerializer {
         }
 
         buffer.writeUnsignedInt(header.lockTime)
+        Log.e("dogecoin", "lockTime=${header.lockTime}")
+        Log.e("dogecoin", "data=${buffer.toByteArray().toHexString()}")
         return buffer.toByteArray()
     }
 
