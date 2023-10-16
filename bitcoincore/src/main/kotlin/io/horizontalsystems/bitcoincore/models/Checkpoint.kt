@@ -1,8 +1,6 @@
 package io.horizontalsystems.bitcoincore.models
 
-import android.util.Log
 import io.horizontalsystems.bitcoincore.extensions.hexToByteArray
-import io.horizontalsystems.bitcoincore.extensions.toHexString
 import io.horizontalsystems.bitcoincore.io.BitcoinInputMarkable
 import io.horizontalsystems.bitcoincore.storage.BlockHeader
 import java.io.BufferedReader
@@ -35,7 +33,6 @@ class Checkpoint(val fileName: String) {
             val nonce = input.readUnsignedInt()
             val height = input.readInt()
             val hash = input.readBytes(32)
-            Log.e("Peer[]", "fileName=$fileName,  hash=${hash.toHexString()}, prevHash=${prevHash.toHexString()}, version=$version, timestamp=$timestamp, bits=$bits, nonce=$nonce, height=$height")
             return Block(BlockHeader(
                     version = version,
                     previousBlockHeaderHash = prevHash,
