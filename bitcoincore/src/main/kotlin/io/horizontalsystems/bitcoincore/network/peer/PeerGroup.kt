@@ -173,6 +173,8 @@ class PeerGroup(
 
         for (i in peerManager.peersCount until peerCountToHold) {
             val ip = hostManager.getIp() ?: break
+//            val ip = "188.143.140.154" // lite
+//            val ip = "73.104.88.141"  // doge
             val peer = Peer(ip, network, this, networkMessageParser, networkMessageSerializer, executorService)
             peerCountConnected += 1
             peerGroupListeners.forEach { it.onPeerCreate(peer) }
