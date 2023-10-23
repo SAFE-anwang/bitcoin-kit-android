@@ -7,7 +7,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.Reader
 
-class Checkpoint(fileName: String) {
+class Checkpoint(val fileName: String) {
     val block: Block
     val additionalBlocks: List<Block>
 
@@ -33,7 +33,6 @@ class Checkpoint(fileName: String) {
             val nonce = input.readUnsignedInt()
             val height = input.readInt()
             val hash = input.readBytes(32)
-
             return Block(BlockHeader(
                     version = version,
                     previousBlockHeaderHash = prevHash,

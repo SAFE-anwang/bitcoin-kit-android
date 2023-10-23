@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore.network.peer
 
+import android.util.Log
 import io.horizontalsystems.bitcoincore.io.BitcoinInput
 import io.horizontalsystems.bitcoincore.network.ExecutorsUtil
 import io.horizontalsystems.bitcoincore.network.Network
@@ -65,11 +66,12 @@ class PeerConnection(
                 // try receive message:
                 while (isRunning && inputStream.available() > 0) {
                     val parsedMsg = networkMessageParser.parseMessage(bitcoinInput)
-//                    logger.info("<= $parsedMsg")
+                    logger.info("<= $parsedMsg")
                     listener.onMessage(parsedMsg)
                 }
             }
         } catch (e: Exception) {
+            logger.info("close e=$e")
             close(e)
         } finally {
             outputStream?.close()
@@ -85,6 +87,7 @@ class PeerConnection(
 
     @Synchronized
     fun close(error: Exception?) {
+        Log.e("Peer[", "peer close host=$host, e=$error")
         disconnectError = error
         isRunning = false
     }

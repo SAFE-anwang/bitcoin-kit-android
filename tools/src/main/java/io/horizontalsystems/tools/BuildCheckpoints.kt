@@ -22,7 +22,7 @@ import kotlin.system.exitProcess
 
 class BuildCheckpoints : CheckpointSyncer.Listener {
 
-    private val syncers = mutableListOf<CheckpointSyncer>().also {
+    /*private val syncers = mutableListOf<CheckpointSyncer>().also {
         // Bitcoin
         it.add(CheckpointSyncer(MainNet(), 2016, 1, this))
         it.add(CheckpointSyncer(TestNet(), 2016, 1, this))
@@ -41,7 +41,7 @@ class BuildCheckpoints : CheckpointSyncer.Listener {
 
         // Ecash
         it.add(CheckpointSyncer(MainNetECash(), 147, 147, this))
-    }
+    }*/
 
     fun build(checkpoint: Block) {
         println(" ================== CHECKPOINT ================== ")
@@ -50,7 +50,7 @@ class BuildCheckpoints : CheckpointSyncer.Listener {
     }
 
     fun sync() {
-        syncers.forEach { it.start() }
+//        syncers.forEach { it.start() }
     }
 
     override fun onSync(network: Network, checkpoints: List<Block>) {
@@ -59,9 +59,9 @@ class BuildCheckpoints : CheckpointSyncer.Listener {
 
         writeCheckpoints(checkpointFile, checkpoints)
 
-        if (syncers.none { !it.isSynced }) {
+        /*if (syncers.none { !it.isSynced }) {
             exitProcess(0)
-        }
+        }*/
     }
 
     // Writing to file
