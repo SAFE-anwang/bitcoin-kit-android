@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
 
     defaultConfig {
         minSdkVersion 23
@@ -47,6 +47,8 @@ android {
             path 'cpp/CMakeLists.txt'
         }
     }
+
+    namespace 'io.horizontalsystems.dashkit'
 }
 
 dependencies {
