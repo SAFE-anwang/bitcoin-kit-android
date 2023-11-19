@@ -50,7 +50,6 @@ class MerkleBlockMessageParser(private val blockHeaderParser: BlockHeaderParser)
 
         val flagsCount = input.readVarInt().toInt()
         val flags = input.readBytes(flagsCount)
-        Log.w("Peer[", "MerkleBlockMessage txCount=$txCount, hashCount=$hashCount, flagsCount=$flagsCount, flags=${flags.toHexString()}")
         return MerkleBlockMessage(header, txCount, hashCount, hashes, flagsCount, flags)
     }
 }

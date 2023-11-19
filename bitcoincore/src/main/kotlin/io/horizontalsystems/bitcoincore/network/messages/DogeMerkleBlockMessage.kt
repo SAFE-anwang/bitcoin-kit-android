@@ -39,7 +39,6 @@ class DogeMerkleBlockMessageParser(private val blockHeaderParser: BlockHeaderPar
     override val command = "merkleblock"
 
     override fun parseMessage(input: BitcoinInputMarkable): IMessage {
-        Log.w("Peer[", "parseMessage ${input.readBytes(4).toHexString()}, count=${input.count}")
         input.reset()
         val header = blockHeaderParser.parse(input)
         val txCount = input.readInt()

@@ -10,7 +10,6 @@ class BitsValidator : IBlockChainedValidator {
     }
 
     override fun validate(block: Block, previousBlock: Block) {
-        Log.e("Peer[", "BitsValidator block.bits=${block.bits}, prev=${previousBlock.bits}")
         if (block.bits != previousBlock.bits) {
 //            throw BlockValidatorException.NotEqualBits()
         }
