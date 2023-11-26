@@ -7,7 +7,6 @@ public class DogeHeaderParser {
     public static int decodeHeader(byte[] payload) {
         int offset = -1;
         CompactSize compactSize;
-        Log.e("Peer[", "head start " + payload[1] + " " + payload[2] + " " + payload[3]);
         if (payload[1] == 0x01 && payload[2] == 0x62 && payload[3] == 0x00) {
             offset = 0;
             // Merged mining block header
