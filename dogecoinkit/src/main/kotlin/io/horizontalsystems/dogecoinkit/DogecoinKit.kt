@@ -32,9 +32,10 @@ class DogecoinKit : AbstractKit {
         TestNet
     }
 
+    var mainNetDogecoin: MainNetDogecoin? = null
     interface Listener : BitcoinCore.Listener
 
-    override var bitcoinCore: BitcoinCore
+    public override var bitcoinCore: BitcoinCore
     override var network: Network
 
     var listener: Listener? = null
@@ -93,7 +94,8 @@ class DogecoinKit : AbstractKit {
         network = when (networkType) {
             NetworkType.MainNet -> {
                 initialSyncUrl = ""
-                MainNetDogecoin()
+                mainNetDogecoin = MainNetDogecoin()
+                mainNetDogecoin!!
             }
             NetworkType.TestNet -> {
                 initialSyncUrl = ""
