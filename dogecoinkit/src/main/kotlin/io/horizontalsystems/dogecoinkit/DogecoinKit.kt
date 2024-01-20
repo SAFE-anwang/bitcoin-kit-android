@@ -99,7 +99,8 @@ class DogecoinKit : AbstractKit {
         network = when (networkType) {
             NetworkType.MainNet -> {
                 initialSyncUrl = ""
-                MainNetDogecoin()
+                mainNetDogecoin = MainNetDogecoin()
+                mainNetDogecoin!!
             }
             NetworkType.TestNet -> {
                 initialSyncUrl = ""

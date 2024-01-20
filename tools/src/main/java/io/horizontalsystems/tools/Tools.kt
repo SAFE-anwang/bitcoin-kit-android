@@ -21,13 +21,13 @@ private fun syncCheckpoints() {
 private fun buildCustomCheckpoint() {
     val checkpointBlock = Block(BlockHeader(
             version = 536870912,
-            previousBlockHeaderHash = HashUtils.toBytesAsLE("ffb185f7e0ba5c72ae9cc45178575eb7029db5e8cca7f747b532cd0b9ab74a2c"),
-            merkleRoot = HashUtils.toBytesAsLE("17fac79b2c00f3e13740d3e04c0e5f1f028cef65127ba7331479b069a638163c"),
-            timestamp = 1694780205,
+            previousBlockHeaderHash = HashUtils.toBytesAsLE("4f6b7c5f4f9b298fa0d6211d17dc252b92e0d5ab45c65c121f1d6c5fd7b82de2"),
+            merkleRoot = HashUtils.toBytesAsLE("87a5518e342bef89de463241f9ab9d1902ba13b9bc3b4078945c53fe1500e8b4"),
+            timestamp = 1702211064,
             bits = 0,
-            nonce = 123806790,
-            hash = HashUtils.toBytesAsLE("3ef061097a1edea33f712d1f99e4be8567e1094a5a01e79f4d196eaad5cd6ab0")
-    ), 5178101)
+            nonce = 129628890,
+            hash = HashUtils.toBytesAsLE("0ca19461c59e31b4d63d21f0b909cf26c46e421d99c01a078a00bc5df472b16a")
+    ), 5400104)
 
     BuildCheckpoints().build(checkpointBlock)
 }

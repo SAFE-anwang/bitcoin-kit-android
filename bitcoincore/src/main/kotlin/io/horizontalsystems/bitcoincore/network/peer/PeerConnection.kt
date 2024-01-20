@@ -87,7 +87,6 @@ class PeerConnection(
 
     @Synchronized
     fun close(error: Exception?) {
-        Log.e("Peer[", "peer close host=$host, e=$error")
         disconnectError = error
         isRunning = false
     }
