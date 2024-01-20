@@ -1,10 +1,30 @@
 package io.horizontalsystems.bitcoincore.core
 
 import io.horizontalsystems.bitcoincore.BitcoinCore
-import io.horizontalsystems.bitcoincore.managers.TransactionItem
-import io.horizontalsystems.bitcoincore.models.*
+import io.horizontalsystems.bitcoincore.apisync.model.TransactionItem
+import io.horizontalsystems.bitcoincore.blocks.IPeerSyncListener
+import io.horizontalsystems.bitcoincore.models.Block
+import io.horizontalsystems.bitcoincore.models.BlockHash
+import io.horizontalsystems.bitcoincore.models.BlockHashPublicKey
+import io.horizontalsystems.bitcoincore.models.InvalidTransaction
+import io.horizontalsystems.bitcoincore.models.PeerAddress
+import io.horizontalsystems.bitcoincore.models.PublicKey
+import io.horizontalsystems.bitcoincore.models.SentTransaction
+import io.horizontalsystems.bitcoincore.models.Transaction
+import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
+import io.horizontalsystems.bitcoincore.models.TransactionFilterType
+import io.horizontalsystems.bitcoincore.models.TransactionInfo
+import io.horizontalsystems.bitcoincore.models.TransactionInput
+import io.horizontalsystems.bitcoincore.models.TransactionOutput
+import io.horizontalsystems.bitcoincore.network.peer.IInventoryItemsHandler
+import io.horizontalsystems.bitcoincore.network.peer.IPeerTaskHandler
 import io.horizontalsystems.bitcoincore.network.peer.Peer
-import io.horizontalsystems.bitcoincore.storage.*
+import io.horizontalsystems.bitcoincore.network.peer.PeerGroup
+import io.horizontalsystems.bitcoincore.storage.FullTransaction
+import io.horizontalsystems.bitcoincore.storage.FullTransactionInfo
+import io.horizontalsystems.bitcoincore.storage.PublicKeyWithUsedState
+import io.horizontalsystems.bitcoincore.storage.TransactionWithBlock
+import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.transactions.builder.MutableTransaction
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import io.horizontalsystems.hdwalletkit.HDKey
@@ -32,11 +52,13 @@ interface IStorage {
     fun getBlockHashHeaderHashes(except: List<ByteArray>): List<ByteArray>
     fun getLastBlockHash(): BlockHash?
 
+    fun getApiBlockHashesCount(): Int
     fun getBlockchainBlockHashes(): List<BlockHash>
     fun getLastBlockchainBlockHash(): BlockHash?
     fun deleteBlockchainBlockHashes()
     fun deleteBlockHash(hash: ByteArray)
     fun addBlockHashes(hashes: List<BlockHash>)
+    fun addBockHashPublicKeys(blockHashPublicKeys: List<BlockHashPublicKey>)
 
     //  Block
 
@@ -59,6 +81,7 @@ interface IStorage {
 
     fun blocksCount(headerHashes: List<ByteArray>? = null): Int
     fun lastBlock(): Block?
+    fun downloadedTransactionsBestBlockHeight(): Int
     fun updateBlock(staleBlock: Block)
     fun deleteBlocks(blocks: List<Block>)
     fun deleteBlocksWithoutTransactions(toHeight: Int)
@@ -138,8 +161,8 @@ interface ITransactionInfoConverter {
     fun transactionInfo(fullTransactionInfo: FullTransactionInfo): TransactionInfo
 }
 
-interface IInitialSyncApi {
-    fun getTransactions(addresses: List<String>): List<TransactionItem>
+interface IApiTransactionProvider {
+    fun transactions(addresses: List<String>, stopHeight: Int?): List<TransactionItem>
 }
 
 interface IPeerAddressManager {
@@ -169,7 +192,13 @@ interface IConnectionManagerListener {
 }
 
 interface IRecipientSetter {
-    fun setRecipient(mutableTransaction: MutableTransaction, toAddress: String, value: Long, pluginData: Map<Byte, IPluginData>, skipChecking: Boolean)
+    fun setRecipient(
+        mutableTransaction: MutableTransaction,
+        toAddress: String,
+        value: Long,
+        pluginData: Map<Byte, IPluginData>,
+        skipChecking: Boolean
+    )
 }
 
 interface ITransactionDataSorterFactory {
@@ -185,13 +214,33 @@ interface IKitStateListener {
     fun onKitStateUpdate(state: BitcoinCore.KitState)
 }
 
-interface IApiSyncListener {
+interface IInitialDownload : IPeerTaskHandler, IInventoryItemsHandler, PeerGroup.Listener {
+    var listener: IBlockSyncListener?
+    val syncPeer: Peer?
+    val syncedPeers: List<Peer>
+
+    fun addPeerSyncListener(peerSyncListener: IPeerSyncListener)
+}
+
+interface IApiSyncer {
+    var listener: IApiSyncerListener?
+    val willSync: Boolean
+
+    fun sync()
+    fun syncLastBlock()
+    fun terminate()
+}
+
+interface IApiSyncerListener {
+    fun onSyncSuccess()
     fun onTransactionsFound(count: Int)
+    fun onSyncFailed(error: Throwable)
 }
 
 interface IBlockSyncListener {
     fun onBlockSyncFinished()
     fun onCurrentBestBlockHeightUpdate(height: Int, maxBlockHeight: Int)
+    fun onBlockForceAdded()
 }
 
 interface IPrivateWallet {
@@ -208,6 +257,7 @@ interface IAccountWallet {
 interface IPublicKeyManager {
     fun changePublicKey(): PublicKey
     fun receivePublicKey(): PublicKey
+    fun usedExternalPublicKeys(change: Boolean): List<PublicKey>
     fun fillGap()
     fun addKeys(keys: List<PublicKey>)
     fun gapShifts(): Boolean

@@ -109,3 +109,18 @@ class KeyHashRestoreKeyConverter(
             listOf(publicKey.publicKeyHash)
     }
 }
+
+class BlockchairCashRestoreKeyConverter(
+    private val addressConverter: IAddressConverter
+) : IRestoreKeyConverter {
+
+    override fun keysForApiRestore(publicKey: PublicKey): List<String> {
+        val legacyAddress = addressConverter.convert(publicKey, ScriptType.P2PKH).stringValue
+
+        return listOf(legacyAddress.split(":").last())
+    }
+
+    override fun bloomFilterElements(publicKey: PublicKey): List<ByteArray> {
+        return listOf(publicKey.publicKeyHash, publicKey.publicKey)
+    }
+}

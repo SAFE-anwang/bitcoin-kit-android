@@ -6,6 +6,11 @@ import io.horizontalsystems.bitcoincore.AbstractKit
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.SyncMode
 import io.horizontalsystems.bitcoincore.BitcoinCoreBuilder
+import io.horizontalsystems.bitcoincore.apisync.BCoinApi
+import io.horizontalsystems.bitcoincore.apisync.BiApiTransactionProvider
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairApi
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairBlockHashFetcher
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairTransactionProvider
 import io.horizontalsystems.bitcoincore.blocks.BlockMedianTimeHelper
 import io.horizontalsystems.bitcoincore.blocks.validators.BitsValidator
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorChain
@@ -32,9 +37,10 @@ class DogecoinKit : AbstractKit {
         TestNet
     }
 
+    var mainNetDogecoin: MainNetDogecoin? = null
     interface Listener : BitcoinCore.Listener
 
-    override var bitcoinCore: BitcoinCore
+    public override var bitcoinCore: BitcoinCore
     override var network: Network
 
     var listener: Listener? = null
@@ -102,7 +108,9 @@ class DogecoinKit : AbstractKit {
         }
 
         val paymentAddressParser = PaymentAddressParser("dogecoin", removeScheme = true)
-        val initialSyncApi = BCoinApi(initialSyncUrl)
+
+        val apiSyncStateManager = ApiSyncStateManager(storage, network.syncableFromApi && syncMode !is SyncMode.Full)
+        val apiTransactionProvider = apiTransactionProvider(networkType, syncMode, apiSyncStateManager)
 
         val blockValidatorSet = BlockValidatorSet()
 
@@ -136,7 +144,7 @@ class DogecoinKit : AbstractKit {
             .setSyncMode(syncMode)
             .setConfirmationThreshold(confirmationsThreshold)
             .setStorage(storage)
-            .setInitialSyncApi(initialSyncApi)
+            .setApiTransactionProvider(apiTransactionProvider)
             .setBlockValidator(blockValidatorSet)
             .addPlugin(HodlerPlugin(coreBuilder.addressConverter, storage, BlockMedianTimeHelper(storage)))
             .build()
@@ -164,6 +172,35 @@ class DogecoinKit : AbstractKit {
         }
     }
 
+
+    private fun apiTransactionProvider(
+            networkType: NetworkType,
+            syncMode: SyncMode,
+            apiSyncStateManager: ApiSyncStateManager
+    ) = when (networkType) {
+        NetworkType.MainNet -> {
+            val bCoinApiProvider = BCoinApi("")
+
+            if (syncMode is SyncMode.Blockchair) {
+                val blockchairApi = BlockchairApi(syncMode.key, network.blockchairChainId)
+                val blockchairBlockHashFetcher = BlockchairBlockHashFetcher(blockchairApi)
+                val blockchairProvider = BlockchairTransactionProvider(blockchairApi, blockchairBlockHashFetcher)
+
+                BiApiTransactionProvider(
+                        restoreProvider = bCoinApiProvider,
+                        syncProvider = blockchairProvider,
+                        syncStateManager = apiSyncStateManager
+                )
+            } else {
+                bCoinApiProvider
+            }
+        }
+
+        NetworkType.TestNet -> {
+            BCoinApi("")
+        }
+    }
+
     companion object {
 
         const val maxTargetBits: Long = 0x1e0fffff      // Maximum difficulty
@@ -175,7 +212,7 @@ class DogecoinKit : AbstractKit {
             "Dogecoin-${networkType.name}-$walletId-${syncMode.javaClass.simpleName}-${purpose.name}"
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
-            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.NewWallet())) {
+            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair(""))) {
                 for (purpose in Purpose.values())
                     try {
                         SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseName(networkType, walletId, syncMode, purpose)))

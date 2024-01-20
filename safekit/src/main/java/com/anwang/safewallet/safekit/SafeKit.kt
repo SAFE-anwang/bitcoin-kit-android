@@ -6,6 +6,12 @@ import io.horizontalsystems.bitcoincore.AbstractKit
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.SyncMode
 import io.horizontalsystems.bitcoincore.BitcoinCoreBuilder
+import io.horizontalsystems.bitcoincore.DustCalculator
+import io.horizontalsystems.bitcoincore.apisync.BiApiTransactionProvider
+import io.horizontalsystems.bitcoincore.apisync.InsightApi
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairApi
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairBlockHashFetcher
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairTransactionProvider
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorChain
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorSet
 import io.horizontalsystems.bitcoincore.extensions.hexToByteArray
@@ -133,6 +139,10 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         val instantTransactionManager = InstantTransactionManager(dashStorage, InstantSendFactory(), InstantTransactionState())
         val initialSyncApi = InsightApi(initialSyncUrl)
 
+        val apiSyncStateManager = ApiSyncStateManager(coreStorage, network.syncableFromApi && syncMode !is SyncMode.Full)
+
+        val apiTransactionProvider = apiTransactionProvider(networkType, syncMode, apiSyncStateManager)
+
         dashTransactionInfoConverter = DashTransactionInfoConverter(instantTransactionManager)
 
 //        val blockHelper = BlockValidatorHelper(coreStorage)
@@ -161,7 +171,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setConfirmationThreshold(confirmationsThreshold)
                 .setStorage(coreStorage)
                 .setBlockHeaderHasher(X11Hasher())
-                .setInitialSyncApi(initialSyncApi)
+                .setApiTransactionProvider(apiTransactionProvider)
+                .setApiSyncStateManager(apiSyncStateManager)
                 .setTransactionInfoConverter(dashTransactionInfoConverter)
                 .setBlockValidator(blockValidatorSet)
 //                .setConnectionManager(connectionManager)
@@ -186,7 +197,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
 
         val quorumListManager = QuorumListManager(dashStorage, QuorumListMerkleRootCalculator(merkleRootCreator), QuorumSortedList())
         val masternodeListManager = MasternodeListManager(dashStorage, masternodeListMerkleRootCalculator, masternodeCbTxHasher, MerkleBranch(), MasternodeSortedList(), quorumListManager)
-        val masternodeSyncer = MasternodeListSyncer(bitcoinCore, PeerTaskFactory(), masternodeListManager, bitcoinCore.initialBlockDownload)
+        val masternodeSyncer = MasternodeListSyncer(bitcoinCore, PeerTaskFactory(), masternodeListManager, bitcoinCore.initialDownload)
 
         bitcoinCore.addPeerTaskHandler(masternodeSyncer)
         bitcoinCore.addPeerSyncListener(masternodeSyncer)
@@ -215,10 +226,11 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         bitcoinCore.addPeerTaskHandler(instantSend)
 
         val calculator = TransactionSizeCalculator()
+        val dustCalculator = DustCalculator(network.dustRelayTxFee, calculator)
         // ADD NEW OUTPUT PROVIDER FOR UNLOCKED
         confirmedUnlockedUnspentOutputProvider = ConfirmedUnlockedUnspentOutputProvider(coreStorage, confirmationsThreshold)
-        bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelector(calculator, confirmedUnlockedUnspentOutputProvider))
-        bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelectorSingleNoChange(calculator, confirmedUnlockedUnspentOutputProvider))
+        bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelector(calculator, dustCalculator, confirmedUnlockedUnspentOutputProvider))
+        bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelectorSingleNoChange(calculator, dustCalculator, confirmedUnlockedUnspentOutputProvider))
     }
 
     // BitcoinCore.Listener
@@ -257,6 +269,35 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         }
     }
 
+
+    private fun apiTransactionProvider(
+            networkType: SafeKit.NetworkType,
+            syncMode: SyncMode,
+            apiSyncStateManager: ApiSyncStateManager
+    ) = when (networkType) {
+        SafeKit.NetworkType.MainNet -> {
+            val insightApiProvider = InsightApi("https://chain.anwang.org/insight-api-safe/")
+
+            if (syncMode is SyncMode.Blockchair) {
+                val blockchairApi = BlockchairApi(syncMode.key, network.blockchairChainId)
+                val blockchairBlockHashFetcher = BlockchairBlockHashFetcher(blockchairApi)
+                val blockchairProvider = BlockchairTransactionProvider(blockchairApi, blockchairBlockHashFetcher)
+
+                BiApiTransactionProvider(
+                        restoreProvider = insightApiProvider,
+                        syncProvider = blockchairProvider,
+                        syncStateManager = apiSyncStateManager
+                )
+            } else {
+                insightApiProvider
+            }
+        }
+
+        SafeKit.NetworkType.TestNet -> {
+            InsightApi("http://dash-testnet.horizontalsystems.xyz/apg")
+        }
+    }
+
     companion object {
         const val maxTargetBits: Long = 0x1e0fffff
 
@@ -271,7 +312,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 "Safe-${networkType.name}-$walletId-${syncMode.javaClass.simpleName}"
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
-            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.NewWallet())) {
+            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair(""))) {
                 try {
                     SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseNameCore(networkType, walletId, syncMode)))
                     SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseName(networkType, walletId, syncMode)))

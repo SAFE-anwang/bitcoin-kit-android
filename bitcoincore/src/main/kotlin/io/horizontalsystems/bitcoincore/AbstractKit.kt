@@ -1,10 +1,17 @@
 package io.horizontalsystems.bitcoincore
 
 import io.horizontalsystems.bitcoincore.core.IPluginData
-import io.horizontalsystems.bitcoincore.models.*
+import io.horizontalsystems.bitcoincore.models.BitcoinPaymentData
+import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
+import io.horizontalsystems.bitcoincore.models.PublicKey
+import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
+import io.horizontalsystems.bitcoincore.models.TransactionFilterType
+import io.horizontalsystems.bitcoincore.models.TransactionInfo
+import io.horizontalsystems.bitcoincore.models.UsedAddress
 import io.horizontalsystems.bitcoincore.network.Network
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
+import io.horizontalsystems.bitcoincore.storage.UnspentOutputInfo
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import io.reactivex.Single
 
@@ -12,6 +19,9 @@ abstract class AbstractKit {
 
     protected abstract var bitcoinCore: BitcoinCore
     protected abstract var network: Network
+
+    val unspentOutputs
+        get() = bitcoinCore.unspentOutputs
 
     val balance
         get() = bitcoinCore.balance
@@ -55,15 +65,47 @@ abstract class AbstractKit {
         return bitcoinCore.getTransaction(hash)
     }
 
-    fun fee(value: Long, address: String? = null, senderPay: Boolean = true, feeRate: Int, pluginData: Map<Byte, IPluginData> = mapOf()): Long {
-        return bitcoinCore.fee(value, address, senderPay, feeRate, pluginData)
+    fun sendInfo(
+        value: Long,
+        address: String? = null,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        unspentOutputs: List<UnspentOutputInfo>?,
+        pluginData: Map<Byte, IPluginData> = mapOf()
+    ): BitcoinSendInfo {
+        return bitcoinCore.sendInfo(
+            value = value,
+            address = address,
+            senderPay = senderPay,
+            feeRate = feeRate,
+            unspentOutputs = unspentOutputs,
+            pluginData = pluginData
+        )
     }
 
-    fun sendSafe(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData> = mapOf()
+    fun send(
+        address: String,
+        value: Long,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>? = null,
+        pluginData: Map<Byte, IPluginData> = mapOf()
+    ): FullTransaction {
+        return bitcoinCore.send(address, value, senderPay, feeRate, sortType, unspentOutputs, pluginData)
+    }
+
+    fun sendSafe(address: String,
+                 value: Long,
+                 senderPay: Boolean = true,
+                 feeRate: Int,
+                 sortType: TransactionDataSortType,
+                 unspentOutputs: List<UnspentOutputInfo>? = null,
+                 pluginData: Map<Byte, IPluginData> = mapOf()
                  ,unlockedHeight: Long ?
                  ,reverseHex: String ?) : FullTransaction {
         val unlockedHeight = unlockedHeight ?: 0;
-        return bitcoinCore.send(address, value, senderPay, feeRate, sortType, pluginData, unlockedHeight, reverseHex)
+        return bitcoinCore.send(address, value, senderPay, feeRate, sortType, pluginData, unspentOutputs, unlockedHeight, reverseHex)
     }
 
     fun send(
@@ -74,7 +116,7 @@ abstract class AbstractKit {
         sortType: TransactionDataSortType,
         pluginData: Map<Byte, IPluginData> = mapOf()
     ): FullTransaction {
-        return bitcoinCore.send(address, value, senderPay, feeRate, sortType, pluginData)
+        return bitcoinCore.send(address, value, senderPay, feeRate, sortType, null, pluginData)
     }
 
     fun send(
@@ -83,9 +125,21 @@ abstract class AbstractKit {
         value: Long,
         senderPay: Boolean = true,
         feeRate: Int,
-        sortType: TransactionDataSortType
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>? = null,
     ): FullTransaction {
-        return bitcoinCore.send(hash, scriptType, value, senderPay, feeRate, sortType)
+        return bitcoinCore.send(hash, scriptType, value, senderPay, feeRate, sortType, unspentOutputs)
+    }
+
+    fun send(
+        hash: ByteArray,
+        scriptType: ScriptType,
+        value: Long,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        sortType: TransactionDataSortType,
+    ): FullTransaction {
+        return bitcoinCore.send(hash, scriptType, value, senderPay, feeRate, sortType, null)
     }
 
     fun redeem(unspentOutput: UnspentOutput, address: String, feeRate: Int, sortType: TransactionDataSortType): FullTransaction {
@@ -94,6 +148,10 @@ abstract class AbstractKit {
 
     fun receiveAddress(): String {
         return bitcoinCore.receiveAddress()
+    }
+
+    fun usedAddresses(change: Boolean): List<UsedAddress> {
+        return bitcoinCore.usedAddresses(change)
     }
 
     fun receivePublicKey(): PublicKey {
@@ -128,8 +186,8 @@ abstract class AbstractKit {
         bitcoinCore.watchTransaction(filter, listener)
     }
 
-    fun maximumSpendableValue(address: String?, feeRate: Int, pluginData: Map<Byte, IPluginData>): Long {
-        return bitcoinCore.maximumSpendableValue(address, feeRate, pluginData)
+    fun maximumSpendableValue(address: String?, feeRate: Int, unspentOutputs: List<UnspentOutputInfo>?, pluginData: Map<Byte, IPluginData>): Long {
+        return bitcoinCore.maximumSpendableValue(address, feeRate, unspentOutputs, pluginData)
     }
 
     fun minimumSpendableValue(address: String?): Int {

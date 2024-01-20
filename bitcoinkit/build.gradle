@@ -1,15 +1,27 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'maven-publish'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+            }
+        }
+    }
+}
 
 android {
-    compileSdkVersion 31
+    namespace 'io.horizontalsystems.bitcoinkit'
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 23
-        targetSdkVersion 29
-        versionCode 1
-        versionName "0.4.1"
+        targetSdkVersion 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,16 +38,11 @@ android {
         test.java.srcDirs += 'src/test/kotlin'
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    namespace 'io.horizontalsystems.bitcoinkit'
+    kotlinOptions { jvmTarget = '17' }
 }
 
 dependencies {
@@ -54,7 +61,7 @@ dependencies {
     api project(':bitcoin-kit-android:hodler')
 
     // Test helpers
-    testImplementation 'junit:junit:4.13'
+    testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.6.1'
     testImplementation 'org.mockito:mockito-core:3.3.3'
     testImplementation 'com.nhaarman:mockito-kotlin-kt1.1:1.6.0'
@@ -68,10 +75,6 @@ dependencies {
 
     // Android Instrumentation Test
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'com.linkedin.dexmaker:dexmaker-mockito-inline:2.19.1'
+    androidTestImplementation 'com.linkedin.dexmaker:dexmaker-mockito-inline:2.28.3'
     androidTestImplementation 'com.nhaarman:mockito-kotlin-kt1.1:1.6.0'
-}
-
-repositories {
-    mavenCentral()
 }

@@ -1,427 +1,62 @@
 package io.horizontalsystems.bitcoincore
 
-import android.content.Context
-import io.horizontalsystems.bitcoincore.blocks.*
-import io.horizontalsystems.bitcoincore.blocks.validators.IBlockValidator
-import io.horizontalsystems.bitcoincore.core.*
+import io.horizontalsystems.bitcoincore.blocks.BlockSyncer
+import io.horizontalsystems.bitcoincore.blocks.IPeerSyncListener
+import io.horizontalsystems.bitcoincore.blocks.InitialBlockDownload
+import io.horizontalsystems.bitcoincore.core.DataProvider
+import io.horizontalsystems.bitcoincore.core.IConnectionManager
+import io.horizontalsystems.bitcoincore.core.IInitialDownload
+import io.horizontalsystems.bitcoincore.core.IKitStateListener
+import io.horizontalsystems.bitcoincore.core.IPluginData
+import io.horizontalsystems.bitcoincore.core.IPublicKeyManager
+import io.horizontalsystems.bitcoincore.core.IStorage
+import io.horizontalsystems.bitcoincore.core.PluginManager
+import io.horizontalsystems.bitcoincore.core.description
+import io.horizontalsystems.bitcoincore.core.scriptType
 import io.horizontalsystems.bitcoincore.extensions.toHexString
-import io.horizontalsystems.bitcoincore.managers.*
-import io.horizontalsystems.bitcoincore.models.*
+import io.horizontalsystems.bitcoincore.managers.IRestoreKeyConverter
+import io.horizontalsystems.bitcoincore.managers.IUnspentOutputSelector
+import io.horizontalsystems.bitcoincore.managers.RestoreKeyConverterChain
+import io.horizontalsystems.bitcoincore.managers.SyncManager
+import io.horizontalsystems.bitcoincore.managers.UnspentOutputSelectorChain
+import io.horizontalsystems.bitcoincore.models.BalanceInfo
+import io.horizontalsystems.bitcoincore.models.BitcoinPaymentData
+import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
+import io.horizontalsystems.bitcoincore.models.BlockInfo
+import io.horizontalsystems.bitcoincore.models.Checkpoint
+import io.horizontalsystems.bitcoincore.models.PublicKey
+import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
+import io.horizontalsystems.bitcoincore.models.TransactionFilterType
+import io.horizontalsystems.bitcoincore.models.TransactionInfo
+import io.horizontalsystems.bitcoincore.models.UsedAddress
 import io.horizontalsystems.bitcoincore.network.Network
-import io.horizontalsystems.bitcoincore.network.messages.*
-import io.horizontalsystems.bitcoincore.network.peer.*
-import io.horizontalsystems.bitcoincore.serializers.BlockHeaderParser
+import io.horizontalsystems.bitcoincore.network.messages.IMessageParser
+import io.horizontalsystems.bitcoincore.network.messages.IMessageSerializer
+import io.horizontalsystems.bitcoincore.network.messages.NetworkMessageParser
+import io.horizontalsystems.bitcoincore.network.messages.NetworkMessageSerializer
+import io.horizontalsystems.bitcoincore.network.peer.IInventoryItemsHandler
+import io.horizontalsystems.bitcoincore.network.peer.IPeerTaskHandler
+import io.horizontalsystems.bitcoincore.network.peer.InventoryItemsHandlerChain
+import io.horizontalsystems.bitcoincore.network.peer.PeerGroup
+import io.horizontalsystems.bitcoincore.network.peer.PeerManager
+import io.horizontalsystems.bitcoincore.network.peer.PeerTaskHandlerChain
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
-import io.horizontalsystems.bitcoincore.transactions.*
-import io.horizontalsystems.bitcoincore.transactions.builder.*
-import io.horizontalsystems.bitcoincore.transactions.extractors.MyOutputsCache
-import io.horizontalsystems.bitcoincore.transactions.extractors.TransactionExtractor
-import io.horizontalsystems.bitcoincore.transactions.extractors.TransactionMetadataExtractor
-import io.horizontalsystems.bitcoincore.transactions.extractors.TransactionOutputProvider
+import io.horizontalsystems.bitcoincore.storage.UnspentOutputInfo
+import io.horizontalsystems.bitcoincore.transactions.TransactionCreator
+import io.horizontalsystems.bitcoincore.transactions.TransactionFeeCalculator
+import io.horizontalsystems.bitcoincore.transactions.TransactionSyncer
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
-import io.horizontalsystems.bitcoincore.utils.*
-import io.horizontalsystems.hdwalletkit.HDExtendedKey
-import io.horizontalsystems.hdwalletkit.HDWallet
+import io.horizontalsystems.bitcoincore.utils.AddressConverterChain
+import io.horizontalsystems.bitcoincore.utils.DirectExecutor
+import io.horizontalsystems.bitcoincore.utils.IAddressConverter
+import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
-import io.horizontalsystems.hdwalletkit.HDWalletAccount
-import io.horizontalsystems.hdwalletkit.HDWalletAccountWatch
 import io.reactivex.Single
-import java.util.*
+import java.util.Date
 import java.util.concurrent.Executor
+import kotlin.math.max
 import kotlin.math.roundToInt
-
-class BitcoinCoreBuilder {
-
-    val addressConverter = AddressConverterChain()
-
-    // required parameters
-    private var context: Context? = null
-    private var extendedKey: HDExtendedKey? = null
-    private var purpose: Purpose? = null
-    private var network: Network? = null
-    private var paymentAddressParser: PaymentAddressParser? = null
-    private var storage: IStorage? = null
-    private var initialSyncApi: IInitialSyncApi? = null
-    private var blockHeaderHasher: IHasher? = null
-    private var transactionInfoConverter: ITransactionInfoConverter? = null
-    private var blockValidator: IBlockValidator? = null
-
-    // parameters with default values
-    private var confirmationsThreshold = 6
-    private var syncMode: BitcoinCore.SyncMode = BitcoinCore.SyncMode.Api()
-    private var peerSize = 10
-    private val plugins = mutableListOf<IPlugin>()
-    private var handleAddrMessage = true
-
-    private var connectionManager:ConnectionManager? = null
-
-    fun setContext(context: Context): BitcoinCoreBuilder {
-        this.context = context
-        return this
-    }
-
-    fun setExtendedKey(extendedKey: HDExtendedKey): BitcoinCoreBuilder {
-        this.extendedKey = extendedKey
-        return this
-    }
-
-    fun setPurpose(purpose: Purpose): BitcoinCoreBuilder {
-        this.purpose = purpose
-        return this
-    }
-
-    fun setNetwork(network: Network): BitcoinCoreBuilder {
-        this.network = network
-        return this
-    }
-
-    fun setPaymentAddressParser(paymentAddressParser: PaymentAddressParser): BitcoinCoreBuilder {
-        this.paymentAddressParser = paymentAddressParser
-        return this
-    }
-
-    fun setConfirmationThreshold(confirmationsThreshold: Int): BitcoinCoreBuilder {
-        this.confirmationsThreshold = confirmationsThreshold
-        return this
-    }
-
-    fun setSyncMode(syncMode: BitcoinCore.SyncMode): BitcoinCoreBuilder {
-        this.syncMode = syncMode
-        return this
-    }
-
-    fun setPeerSize(peerSize: Int): BitcoinCoreBuilder {
-        if (peerSize < TransactionSender.minConnectedPeerSize) {
-            throw Error("Peer size cannot be less than ${TransactionSender.minConnectedPeerSize}")
-        }
-
-        this.peerSize = peerSize
-        return this
-    }
-
-    fun setStorage(storage: IStorage): BitcoinCoreBuilder {
-        this.storage = storage
-        return this
-    }
-
-    fun setBlockHeaderHasher(blockHeaderHasher: IHasher): BitcoinCoreBuilder {
-        this.blockHeaderHasher = blockHeaderHasher
-        return this
-    }
-
-    fun setInitialSyncApi(initialSyncApi: IInitialSyncApi?): BitcoinCoreBuilder {
-        this.initialSyncApi = initialSyncApi
-        return this
-    }
-
-    fun setTransactionInfoConverter(transactionInfoConverter: ITransactionInfoConverter): BitcoinCoreBuilder {
-        this.transactionInfoConverter = transactionInfoConverter
-        return this
-    }
-
-    fun setBlockValidator(blockValidator: IBlockValidator): BitcoinCoreBuilder {
-        this.blockValidator = blockValidator
-        return this
-    }
-
-    fun setHandleAddrMessage(handle: Boolean): BitcoinCoreBuilder {
-        handleAddrMessage = handle
-        return this
-    }
-
-    fun addPlugin(plugin: IPlugin): BitcoinCoreBuilder {
-        plugins.add(plugin)
-        return this
-    }
-
-    fun setConnectionManager(connectionManager: ConnectionManager): BitcoinCoreBuilder {
-        this.connectionManager = connectionManager
-        return this
-    }
-
-    fun build(): BitcoinCore {
-        val context = checkNotNull(this.context)
-//        val connectionManager = checkNotNull(this.connectionManager)
-        val extendedKey = checkNotNull(this.extendedKey)
-        val purpose = checkNotNull(this.purpose)
-        val network = checkNotNull(this.network)
-        val paymentAddressParser = checkNotNull(this.paymentAddressParser)
-        val storage = checkNotNull(this.storage)
-        val initialSyncApi = checkNotNull(this.initialSyncApi)
-        val blockHeaderHasher = this.blockHeaderHasher ?: DoubleSha256Hasher()
-        val transactionInfoConverter = this.transactionInfoConverter ?: TransactionInfoConverter()
-
-        val restoreKeyConverterChain = RestoreKeyConverterChain()
-
-        val pluginManager = PluginManager()
-        plugins.forEach { pluginManager.addPlugin(it) }
-
-        transactionInfoConverter.baseConverter = BaseTransactionInfoConverter(pluginManager)
-
-        val unspentOutputProvider = UnspentOutputProvider(storage, confirmationsThreshold, pluginManager)
-
-        val dataProvider = DataProvider(storage, unspentOutputProvider, transactionInfoConverter)
-
-        val connectionManager = ConnectionManager(context)
-
-        var privateWallet: IPrivateWallet? = null
-        val publicKeyFetcher: IPublicKeyFetcher
-        var multiAccountPublicKeyFetcher: IMultiAccountPublicKeyFetcher? = null
-        val publicKeyManager: IPublicKeyManager
-        val bloomFilterProvider: IBloomFilterProvider
-        val gapLimit = 20
-
-        if (!extendedKey.isPublic) {
-            when (extendedKey.derivedType) {
-                HDExtendedKey.DerivedType.Master -> {
-                    val wallet = Wallet(HDWallet(extendedKey.key, network.coinType, purpose), gapLimit)
-                    privateWallet = wallet
-                    val fetcher = MultiAccountPublicKeyFetcher(wallet)
-                    publicKeyFetcher = fetcher
-                    multiAccountPublicKeyFetcher = fetcher
-                    PublicKeyManager.create(storage, wallet, restoreKeyConverterChain).apply {
-                        publicKeyManager = this
-                        bloomFilterProvider = this
-                    }
-                }
-                HDExtendedKey.DerivedType.Account -> {
-                    val wallet = AccountWallet(HDWalletAccount(extendedKey.key), gapLimit)
-                    privateWallet = wallet
-                    val fetcher = PublicKeyFetcher(wallet)
-                    publicKeyFetcher = fetcher
-                    AccountPublicKeyManager.create(storage, wallet, restoreKeyConverterChain).apply {
-                        publicKeyManager = this
-                        bloomFilterProvider = this
-                    }
-
-                }
-                HDExtendedKey.DerivedType.Bip32 -> {
-                    throw IllegalStateException("Custom Bip32 Extended Keys are not supported")
-                }
-            }
-        } else {
-            when (extendedKey.derivedType) {
-                HDExtendedKey.DerivedType.Account -> {
-                    val wallet = WatchAccountWallet(HDWalletAccountWatch(extendedKey.key), gapLimit)
-                    val fetcher = WatchPublicKeyFetcher(wallet)
-                    publicKeyFetcher = fetcher
-                    AccountPublicKeyManager.create(storage, wallet, restoreKeyConverterChain).apply {
-                        publicKeyManager = this
-                        bloomFilterProvider = this
-                    }
-
-                }
-                HDExtendedKey.DerivedType.Bip32, HDExtendedKey.DerivedType.Master -> {
-                    throw IllegalStateException("Only Account Extended Public Keys are supported")
-                }
-            }
-        }
-
-        val pendingOutpointsProvider = PendingOutpointsProvider(storage)
-
-        val irregularOutputFinder = IrregularOutputFinder(storage)
-        val metadataExtractor = TransactionMetadataExtractor(
-            MyOutputsCache.create(storage),
-            TransactionOutputProvider(storage)
-        )
-        val transactionExtractor = TransactionExtractor(addressConverter, storage, pluginManager, metadataExtractor)
-
-        val conflictsResolver = TransactionConflictsResolver(storage)
-        val pendingTransactionProcessor = PendingTransactionProcessor(
-            storage,
-            transactionExtractor,
-            publicKeyManager,
-            irregularOutputFinder,
-            dataProvider,
-            conflictsResolver
-        )
-        val invalidator = TransactionInvalidator(storage, transactionInfoConverter, dataProvider)
-        val blockTransactionProcessor = BlockTransactionProcessor(
-            storage,
-            transactionExtractor,
-            publicKeyManager,
-            irregularOutputFinder,
-            dataProvider,
-            conflictsResolver,
-            invalidator
-        )
-
-        val peerHostManager = PeerAddressManager(network, storage)
-        val bloomFilterManager = BloomFilterManager()
-
-        val peerManager = PeerManager()
-
-        val networkMessageParser = NetworkMessageParser(network.magic)
-        val networkMessageSerializer = NetworkMessageSerializer(network.magic)
-
-        val blockchain = Blockchain(storage, blockValidator, dataProvider)
-        val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)
-
-        val blockSyncer = BlockSyncer(storage, blockchain, blockTransactionProcessor, publicKeyManager, checkpoint)
-        val initialBlockDownload = InitialBlockDownload(blockSyncer, peerManager, MerkleBlockExtractor(network.maxBlockSize))
-        val peerGroup = PeerGroup(
-            peerHostManager,
-            network,
-            peerManager,
-            peerSize,
-            networkMessageParser,
-            networkMessageSerializer,
-            connectionManager,
-            blockSyncer.localDownloadedBestBlockHeight,
-            handleAddrMessage
-        )
-        peerHostManager.listener = peerGroup
-
-        val unspentOutputSelector = UnspentOutputSelectorChain()
-        val transactionSyncer = TransactionSyncer(storage, pendingTransactionProcessor, invalidator, publicKeyManager)
-        val transactionDataSorterFactory = TransactionDataSorterFactory()
-
-        var dustCalculator: DustCalculator? = null
-        var transactionSizeCalculator: TransactionSizeCalculator? = null
-        var transactionFeeCalculator: TransactionFeeCalculator? = null
-        var transactionSender: TransactionSender? = null
-        var transactionCreator: TransactionCreator? = null
-
-        if (privateWallet != null) {
-            val ecdsaInputSigner = EcdsaInputSigner(privateWallet, network)
-            val schnorrInputSigner = SchnorrInputSigner(privateWallet)
-            val transactionSizeCalculatorInstance = TransactionSizeCalculator()
-            val dustCalculatorInstance = DustCalculator(network.dustRelayTxFee, transactionSizeCalculatorInstance)
-            val recipientSetter = RecipientSetter(addressConverter, pluginManager)
-            val outputSetter = OutputSetter(transactionDataSorterFactory)
-            val inputSetter = InputSetter(
-                unspentOutputSelector,
-                publicKeyManager,
-                addressConverter,
-                purpose.scriptType,
-                transactionSizeCalculatorInstance,
-                pluginManager,
-                dustCalculatorInstance,
-                transactionDataSorterFactory
-            )
-            val lockTimeSetter = LockTimeSetter(storage)
-            val signer = TransactionSigner(ecdsaInputSigner, schnorrInputSigner)
-            val transactionBuilder = TransactionBuilder(recipientSetter, outputSetter, inputSetter, signer, lockTimeSetter)
-            transactionFeeCalculator = TransactionFeeCalculator(recipientSetter, inputSetter, addressConverter, publicKeyManager, purpose.scriptType)
-            val transactionSendTimer = TransactionSendTimer(60)
-            val transactionSenderInstance = TransactionSender(transactionSyncer, peerManager, initialBlockDownload, storage, transactionSendTimer)
-
-            dustCalculator = dustCalculatorInstance
-            transactionSizeCalculator = transactionSizeCalculatorInstance
-            transactionSender = transactionSenderInstance
-
-            transactionSendTimer.listener = transactionSender
-
-            transactionCreator = TransactionCreator(transactionBuilder, pendingTransactionProcessor, transactionSenderInstance, bloomFilterManager)
-        }
-
-        val blockHashFetcher = BlockHashFetcher(restoreKeyConverterChain, initialSyncApi, BlockHashFetcherHelper())
-        val blockDiscovery = BlockDiscoveryBatch(blockHashFetcher, publicKeyFetcher, checkpoint.block.height, gapLimit)
-        val apiSyncStateManager = ApiSyncStateManager(storage, network.syncableFromApi && syncMode is BitcoinCore.SyncMode.Api)
-        val initialSyncer = InitialSyncer(storage, blockDiscovery, publicKeyManager, multiAccountPublicKeyFetcher)
-
-        val syncManager = SyncManager(connectionManager, initialSyncer, peerGroup, apiSyncStateManager, blockSyncer.localDownloadedBestBlockHeight)
-        initialSyncer.listener = syncManager
-        connectionManager.listener = syncManager
-        blockSyncer.listener = syncManager
-        initialBlockDownload.listener = syncManager
-        blockHashFetcher.listener = syncManager
-
-        val bitcoinCore = BitcoinCore(
-            storage,
-            dataProvider,
-            publicKeyManager,
-            addressConverter,
-            restoreKeyConverterChain,
-            transactionCreator,
-            transactionFeeCalculator,
-            paymentAddressParser,
-            syncManager,
-            purpose,
-            peerManager,
-            dustCalculator,
-            pluginManager,
-            connectionManager
-        )
-
-        dataProvider.listener = bitcoinCore
-        syncManager.listener = bitcoinCore
-
-        val watchedTransactionManager = WatchedTransactionManager()
-        bloomFilterManager.addBloomFilterProvider(watchedTransactionManager)
-        bloomFilterManager.addBloomFilterProvider(bloomFilterProvider)
-        bloomFilterManager.addBloomFilterProvider(pendingOutpointsProvider)
-        bloomFilterManager.addBloomFilterProvider(irregularOutputFinder)
-
-        bitcoinCore.watchedTransactionManager = watchedTransactionManager
-        pendingTransactionProcessor.transactionListener = watchedTransactionManager
-        blockTransactionProcessor.transactionListener = watchedTransactionManager
-
-        bitcoinCore.peerGroup = peerGroup
-        bitcoinCore.transactionSyncer = transactionSyncer
-        bitcoinCore.networkMessageParser = networkMessageParser
-        bitcoinCore.networkMessageSerializer = networkMessageSerializer
-        bitcoinCore.unspentOutputSelector = unspentOutputSelector
-
-        peerGroup.peerTaskHandler = bitcoinCore.peerTaskHandlerChain
-        peerGroup.inventoryItemsHandler = bitcoinCore.inventoryItemsHandlerChain
-
-        bitcoinCore.prependAddressConverter(Base58AddressConverter(network.addressVersion, network.addressScriptVersion))
-
-        // this part can be moved to another place
-
-        bitcoinCore.addMessageParser(AddrMessageParser())
-            .addMessageParser(MerkleBlockMessageParser(BlockHeaderParser(blockHeaderHasher)))
-            .addMessageParser(InvMessageParser())
-            .addMessageParser(GetDataMessageParser())
-            .addMessageParser(PingMessageParser())
-            .addMessageParser(PongMessageParser())
-            .addMessageParser(TransactionMessageParser())
-            .addMessageParser(VerAckMessageParser())
-            .addMessageParser(VersionMessageParser())
-            .addMessageParser(RejectMessageParser())
-
-        bitcoinCore.addMessageSerializer(FilterLoadMessageSerializer())
-            .addMessageSerializer(GetBlocksMessageSerializer())
-            .addMessageSerializer(InvMessageSerializer())
-            .addMessageSerializer(GetDataMessageSerializer())
-            .addMessageSerializer(MempoolMessageSerializer())
-            .addMessageSerializer(PingMessageSerializer())
-            .addMessageSerializer(PongMessageSerializer())
-            .addMessageSerializer(TransactionMessageSerializer())
-            .addMessageSerializer(VerAckMessageSerializer())
-            .addMessageSerializer(VersionMessageSerializer())
-
-        val bloomFilterLoader = BloomFilterLoader(bloomFilterManager, peerManager)
-        bloomFilterManager.listener = bloomFilterLoader
-        bitcoinCore.addPeerGroupListener(bloomFilterLoader)
-
-        // todo: now this part cannot be moved to another place since bitcoinCore requires initialBlockDownload to be set. find solution to do so
-        bitcoinCore.initialBlockDownload = initialBlockDownload
-        bitcoinCore.addPeerTaskHandler(initialBlockDownload)
-        bitcoinCore.addInventoryItemsHandler(initialBlockDownload)
-        bitcoinCore.addPeerGroupListener(initialBlockDownload)
-
-
-        val mempoolTransactions = MempoolTransactions(transactionSyncer, transactionSender)
-        bitcoinCore.addPeerTaskHandler(mempoolTransactions)
-        bitcoinCore.addInventoryItemsHandler(mempoolTransactions)
-        bitcoinCore.addPeerGroupListener(mempoolTransactions)
-
-        transactionSender?.let {
-            bitcoinCore.addPeerSyncListener(SendTransactionsOnPeersSynced(transactionSender))
-            bitcoinCore.addPeerTaskHandler(transactionSender)
-        }
-
-        transactionSizeCalculator?.let {
-            bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelector(transactionSizeCalculator, unspentOutputProvider))
-            bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelectorSingleNoChange(transactionSizeCalculator, unspentOutputProvider))
-        }
-
-        return bitcoinCore
-    }
-}
 
 class BitcoinCore(
     val storage: IStorage,
@@ -453,7 +88,7 @@ class BitcoinCore(
     lateinit var transactionSyncer: TransactionSyncer
     lateinit var networkMessageParser: NetworkMessageParser
     lateinit var networkMessageSerializer: NetworkMessageSerializer
-    lateinit var initialBlockDownload: InitialBlockDownload
+    lateinit var initialDownload: IInitialDownload
     lateinit var unspentOutputSelector: UnspentOutputSelectorChain
     lateinit var watchedTransactionManager: WatchedTransactionManager
 
@@ -461,7 +96,7 @@ class BitcoinCore(
     val peerTaskHandlerChain = PeerTaskHandlerChain()
 
     fun addPeerSyncListener(peerSyncListener: IPeerSyncListener): BitcoinCore {
-        initialBlockDownload.addPeerSyncListener(peerSyncListener)
+        initialDownload.addPeerSyncListener(peerSyncListener)
         return this
     }
 
@@ -513,6 +148,11 @@ class BitcoinCore(
     val watchAccount: Boolean
         get() = transactionCreator == null
 
+    val unspentOutputs: List<UnspentOutputInfo>
+        get() = unspentOutputSelector.all.map {
+            UnspentOutputInfo.fromUnspentOutput(it)
+        }
+
     //
     // API methods
     //
@@ -534,7 +174,7 @@ class BitcoinCore(
     }
 
     fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
-        val checkpoint = BlockSyncer.resolveCheckpoint(syncMode, network, storage)
+        val checkpoint = Checkpoint.resolveCheckpoint(syncMode, network, storage)
         val lastBlock = storage.lastBlock()
         if (lastBlock != null && lastBlock.height < checkpoint.block.height) {
             storage.saveBlock(checkpoint.block)
@@ -543,12 +183,12 @@ class BitcoinCore(
             }
         }
         dataProvider.updateLastBlockInfo()
-        initialBlockDownload.updateCheckpoint(checkpoint)
+        (initialDownload as InitialBlockDownload).updateCheckpoint(checkpoint)
         syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)
     }
 
     fun stopDownload() {
-        initialBlockDownload.stopDownload()
+        (initialDownload as InitialBlockDownload).stopDownload()
     }
 
     fun onEnterForeground() {
@@ -563,23 +203,54 @@ class BitcoinCore(
         return dataProvider.transactions(fromUid, type, limit)
     }
 
-    fun fee(value: Long, address: String? = null, senderPay: Boolean = true, feeRate: Int, pluginData: Map<Byte, IPluginData>): Long {
-        return transactionFeeCalculator?.fee(value, feeRate, senderPay, address, pluginData) ?: throw CoreError.ReadOnlyCore
+    fun sendInfo(
+        value: Long,
+        address: String? = null,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        unspentOutputs: List<UnspentOutputInfo>?,
+        pluginData: Map<Byte, IPluginData>
+    ): BitcoinSendInfo {
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        return transactionFeeCalculator?.sendInfo(
+            value = value,
+            feeRate = feeRate,
+            senderPay = senderPay,
+            toAddress = address,
+            unspentOutputs = outputs,
+            pluginData = pluginData
+        ) ?: throw CoreError.ReadOnlyCore
     }
 
-    fun send(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>
-             , unlockedHeight: Long?     // UPDATE FOR SAFE
-             , reverseHex: String?     // UPDATE FOR SAFE
+    fun send(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>,
+             unspentOutputs: List<UnspentOutputInfo>?,
+             unlockedHeight: Long?,     // UPDATE FOR SAFE
+             reverseHex: String?     // UPDATE FOR SAFE
     ): FullTransaction {
-        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, pluginData, unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, outputs, pluginData, unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
-    fun send(hash: ByteArray, scriptType: ScriptType, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType
-             , unlockedHeight: Long?    // UPDATE FOR SAFE
-             , reverseHex: String?     // UPDATE FOR SAFE
+    fun send(hash: ByteArray, scriptType: ScriptType, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType,
+             unspentOutputs: List<UnspentOutputInfo>?,
+             unlockedHeight: Long?,    // UPDATE FOR SAFE
+             reverseHex: String?,     // UPDATE FOR SAFE
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, outputs, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(
@@ -588,9 +259,25 @@ class BitcoinCore(
         senderPay: Boolean = true,
         feeRate: Int,
         sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>?,
         pluginData: Map<Byte, IPluginData>
     ): FullTransaction {
-        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, pluginData, null, null) ?: throw CoreError.ReadOnlyCore
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        return transactionCreator?.create(
+            toAddress = address,
+            value = value,
+            feeRate = feeRate,
+            senderPay = senderPay,
+            sortType = sortType,
+            unspentOutputs = outputs,
+            pluginData = pluginData,
+            null,
+            null
+        ) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(
@@ -599,10 +286,26 @@ class BitcoinCore(
         value: Long,
         senderPay: Boolean = true,
         feeRate: Int,
-        sortType: TransactionDataSortType
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>?,
     ): FullTransaction {
         val address = addressConverter.convert(hash, scriptType)
-        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, mapOf(), null, null) ?: throw CoreError.ReadOnlyCore
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        return transactionCreator?.create(
+            toAddress = address.stringValue,
+            value = value,
+            feeRate = feeRate,
+            senderPay = senderPay,
+            sortType = sortType,
+            unspentOutputs = outputs,
+            pluginData = mapOf(),
+            null,
+            null
+        ) ?: throw CoreError.ReadOnlyCore
     }
 
     fun redeem(unspentOutput: UnspentOutput, address: String, feeRate: Int, sortType: TransactionDataSortType): FullTransaction {
@@ -611,6 +314,15 @@ class BitcoinCore(
 
     fun receiveAddress(): String {
         return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).stringValue
+    }
+
+    fun usedAddresses(change: Boolean): List<UsedAddress> {
+        return publicKeyManager.usedExternalPublicKeys(change).map {
+            UsedAddress(
+                index = it.index,
+                address = addressConverter.convert(it, purpose.scriptType).stringValue
+            )
+        }.sortedBy { it.index }
     }
 
     fun receivePublicKey(): PublicKey {
@@ -660,7 +372,7 @@ class BitcoinCore(
         val statusInfo = LinkedHashMap<String, Any>()
 
         statusInfo["Synced Until"] = lastBlockInfo?.timestamp?.let { Date(it * 1000) } ?: "N/A"
-        statusInfo["Syncing Peer"] = initialBlockDownload.syncPeer?.host ?: "N/A"
+        statusInfo["Syncing Peer"] = initialDownload.syncPeer?.host ?: "N/A"
         statusInfo["Derivation"] = purpose.description
         statusInfo["Sync State"] = syncState.toString()
         statusInfo["Last Block Height"] = lastBlockInfo?.height ?: "N/A"
@@ -734,10 +446,32 @@ class BitcoinCore(
         watchedTransactionManager.add(filter, listener)
     }
 
-    fun maximumSpendableValue(address: String?, feeRate: Int, pluginData: Map<Byte, IPluginData>): Long {
-        return transactionFeeCalculator?.let { transactionFeeCalculator ->
-            balance.spendable - transactionFeeCalculator.fee(balance.spendable, feeRate, false, address, pluginData)
-        } ?: throw CoreError.ReadOnlyCore
+    fun maximumSpendableValue(
+        address: String?,
+        feeRate: Int,
+        unspentOutputs: List<UnspentOutputInfo>?,
+        pluginData: Map<Byte, IPluginData>
+    ): Long {
+        if (transactionFeeCalculator == null) throw CoreError.ReadOnlyCore
+
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.all.firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+
+        val spendableBalance = outputs?.sumOf { it.output.value } ?: balance.spendable
+
+        val sendAllFee = transactionFeeCalculator.sendInfo(
+            value = spendableBalance,
+            feeRate = feeRate,
+            senderPay = false,
+            toAddress = address,
+            unspentOutputs = outputs,
+            pluginData = pluginData
+        ).fee
+
+        return max(0L, spendableBalance - sendAllFee)
     }
 
     fun minimumSpendableValue(address: String?): Int {
@@ -797,7 +531,7 @@ class BitcoinCore(
     sealed class SyncMode {
         class Full : SyncMode()
         class Api : SyncMode()
-        class NewWallet : SyncMode()
+        class Blockchair(val key: String) : SyncMode()
     }
 
     sealed class StateError : Exception() {
@@ -808,6 +542,5 @@ class BitcoinCore(
     sealed class CoreError : Exception() {
         object ReadOnlyCore : CoreError()
     }
-
 
 }

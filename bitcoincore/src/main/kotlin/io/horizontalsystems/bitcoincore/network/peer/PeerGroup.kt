@@ -5,7 +5,12 @@ import io.horizontalsystems.bitcoincore.core.IPeerAddressManager
 import io.horizontalsystems.bitcoincore.core.IPeerAddressManagerListener
 import io.horizontalsystems.bitcoincore.network.ExecutorsUtil
 import io.horizontalsystems.bitcoincore.network.Network
-import io.horizontalsystems.bitcoincore.network.messages.*
+import io.horizontalsystems.bitcoincore.network.messages.AddrMessage
+import io.horizontalsystems.bitcoincore.network.messages.IMessage
+import io.horizontalsystems.bitcoincore.network.messages.InvMessage
+import io.horizontalsystems.bitcoincore.network.messages.NetworkMessageParser
+import io.horizontalsystems.bitcoincore.network.messages.NetworkMessageSerializer
+import io.horizontalsystems.bitcoincore.network.messages.VersionMessage
 import io.horizontalsystems.bitcoincore.network.peer.task.PeerTask
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -27,6 +32,7 @@ class PeerGroup(
     interface Listener {
         fun onStart() = Unit
         fun onStop() = Unit
+        fun onRefresh() = Unit
         fun onPeerCreate(peer: Peer) = Unit
         fun onPeerConnect(peer: Peer) = Unit
         fun onPeerDisconnect(peer: Peer, e: Exception?) = Unit
@@ -36,7 +42,9 @@ class PeerGroup(
     var inventoryItemsHandler: IInventoryItemsHandler? = null
     var peerTaskHandler: IPeerTaskHandler? = null
 
-    private var running = false
+    var running = false
+        private set
+
     private val logger = Logger.getLogger("PeerGroup")
     private val peerGroupListeners = mutableListOf<Listener>()
     private var executorService = ExecutorsUtil.getExecutorService()
@@ -65,6 +73,12 @@ class PeerGroup(
         peerGroupListeners.forEach { it.onStop() }
     }
 
+    fun refresh() {
+        if (running) {
+            peerGroupListeners.forEach { it.onRefresh() }
+        }
+    }
+
     fun addPeerGroupListener(listener: Listener) {
         peerGroupListeners.add(listener)
     }
@@ -91,12 +105,14 @@ class PeerGroup(
                 logger.info("Peer ${peer.host} disconnected.")
                 hostManager.markSuccess(peer.host)
             }
+
             is PeerTimer.Error.Timeout -> {
                 logger.warning("Peer ${peer.host} disconnected. Warning: ${e.javaClass.simpleName}, ${e.message}.")
                 // since the peer can be normally interacted after awhile we should not remove it from list
                 // that is why we mark it as disconnected with no error
                 hostManager.markSuccess(peer.host)
             }
+
             else -> {
                 logger.warning("Peer ${peer.host} disconnected. Error: ${e.javaClass.simpleName}, ${e.message}.")
                 hostManager.markFailed(peer.host)
