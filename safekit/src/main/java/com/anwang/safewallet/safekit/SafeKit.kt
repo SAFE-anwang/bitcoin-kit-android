@@ -276,7 +276,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             apiSyncStateManager: ApiSyncStateManager
     ) = when (networkType) {
         SafeKit.NetworkType.MainNet -> {
-            val insightApiProvider = InsightApi("https://chain.anwang.org/insight-api-safe/")
+            val insightApiProvider = InsightApi("https://chain.anwang.org/insight-api-safe")
 
             if (syncMode is SyncMode.Blockchair) {
                 val blockchairApi = BlockchairApi(syncMode.key, network.blockchairChainId)
