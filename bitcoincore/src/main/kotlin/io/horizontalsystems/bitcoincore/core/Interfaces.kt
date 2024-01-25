@@ -227,7 +227,6 @@ interface IApiSyncer {
     val willSync: Boolean
 
     fun sync()
-    fun syncLastBlock()
     fun terminate()
 }
 

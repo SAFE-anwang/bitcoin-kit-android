@@ -170,7 +170,6 @@ class SyncManager(
         val forceAddedBlocks = forceAddedBlocksTotal - storage.getApiBlockHashesCount()
         syncState = when {
             forceAddedBlocks >= forceAddedBlocksTotal -> {
-                apiSyncer.syncLastBlock()
                 KitState.Synced
             }
 
