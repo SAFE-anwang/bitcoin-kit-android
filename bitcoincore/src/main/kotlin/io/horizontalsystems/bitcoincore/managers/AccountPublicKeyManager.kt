@@ -29,6 +29,10 @@ class AccountPublicKeyManager(
         return getPublicKey(external = true)
     }
 
+    override fun usedExternalPublicKeys(change: Boolean): List<PublicKey> {
+        return storage.getPublicKeysWithUsedState().filter { it.publicKey.external == !change && it.used }.map { it.publicKey }
+    }
+
     @Throws
     override fun changePublicKey(): PublicKey {
         return getPublicKey(external = false)
@@ -88,8 +92,7 @@ class AccountPublicKeyManager(
     }
 
     private fun gapKeysCount(publicKeys: List<PublicKeyWithUsedState>): Int {
-        return when (val lastUsedKey =
-            publicKeys.filter { it.used }.maxByOrNull { it.publicKey.index }) {
+        return when (val lastUsedKey = publicKeys.filter { it.used }.maxByOrNull { it.publicKey.index }) {
             null -> publicKeys.size
             else -> publicKeys.filter { it.publicKey.index > lastUsedKey.publicKey.index }.size
         }

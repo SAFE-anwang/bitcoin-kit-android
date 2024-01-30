@@ -8,18 +8,16 @@ import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 
 class TransactionBuilder(
-    private val recipientSetter: IRecipientSetter,
-    private val outputSetter: OutputSetter,
-    private val inputSetter: InputSetter,
-    private val signer: TransactionSigner,
-    private val lockTimeSetter: LockTimeSetter
+        private val recipientSetter: IRecipientSetter,
+        private val outputSetter: OutputSetter,
+        private val inputSetter: InputSetter,
+        private val signer: TransactionSigner,
+        private val lockTimeSetter: LockTimeSetter
 ) {
 
-    fun buildTransaction(toAddress: String, value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>
+    fun buildTransaction(toAddress: String, value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType, unspentOutputs: List<UnspentOutput>?, pluginData: Map<Byte, IPluginData>
                          , unlockedHeight: Long?  /* UPDATE FOR SAFE */
-                         , reverseHex: String?  /* UPDATE FOR SAFE */
-    ): FullTransaction {
-
+                         , reverseHex: String?  /* UPDATE FOR SAFE */): FullTransaction {
         val mutableTransaction = MutableTransaction()
         if ( unlockedHeight != null ) {
             mutableTransaction.unlockedHeight = unlockedHeight;
@@ -28,7 +26,7 @@ class TransactionBuilder(
             mutableTransaction.reverseHex = reverseHex
         }
         recipientSetter.setRecipient(mutableTransaction, toAddress, value, pluginData, false)
-        inputSetter.setInputs(mutableTransaction, feeRate, senderPay, sortType)
+        inputSetter.setInputs(mutableTransaction, feeRate, senderPay, unspentOutputs, sortType)
         lockTimeSetter.setLockTime(mutableTransaction)
 
         outputSetter.setOutputs(mutableTransaction, sortType)

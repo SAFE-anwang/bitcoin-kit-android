@@ -23,8 +23,14 @@ interface BlockHashDao {
     @Query("SELECT * FROM BlockHash WHERE height = 0")
     fun getBlockchainBlockHashes(): List<BlockHash>
 
+    @Query("SELECT COUNT(*) FROM BlockHash WHERE height > 0")
+    fun getApiBlockHashesCount(): Int
+
     @Query("SELECT * FROM BlockHash ORDER BY sequence DESC LIMIT 1")
     fun getLastBlockHash(): BlockHash?
+
+    @Query("SELECT * FROM BlockHash ORDER BY height DESC LIMIT 1")
+    fun getLastBlockHashByHeight(): BlockHash?
 
     @Query("SELECT * FROM BlockHash WHERE height = 0 ORDER BY sequence DESC LIMIT 1")
     fun getLastBlockchainBlockHash(): BlockHash?

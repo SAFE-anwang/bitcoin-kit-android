@@ -5,6 +5,10 @@ import io.horizontalsystems.bitcoincore.core.IPublicKeyManager
 import io.horizontalsystems.bitcoincore.core.ITransactionDataSorterFactory
 import io.horizontalsystems.bitcoincore.core.PluginManager
 import io.horizontalsystems.bitcoincore.managers.IUnspentOutputSelector
+import io.horizontalsystems.bitcoincore.managers.SelectedUnspentOutputInfo
+import io.horizontalsystems.bitcoincore.managers.SendValueErrors
+import io.horizontalsystems.bitcoincore.managers.UnspentOutputQueue
+import io.horizontalsystems.bitcoincore.models.Address
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.models.TransactionInput
 import io.horizontalsystems.bitcoincore.storage.InputToSign
@@ -23,62 +27,112 @@ class InputSetter(
     private val dustCalculator: DustCalculator,
     private val transactionDataSorterFactory: ITransactionDataSorterFactory
 ) {
-    fun setInputs(mutableTransaction: MutableTransaction, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType) {
-        val value = mutableTransaction.recipientValue
-        val dust = dustCalculator.dust(changeScriptType)
-        val unspentOutputInfo = unspentOutputSelector.select(
-            value,
-            feeRate,
-            mutableTransaction.recipientAddress.scriptType,
-            changeScriptType,
-            senderPay, dust,
-            mutableTransaction.getPluginDataOutputSize()
-        )
-
-        val sorter = transactionDataSorterFactory.sorter(sortType)
-        val unspentOutputs = sorter.sortUnspents(unspentOutputInfo.outputs)
-
-        for (unspentOutput in unspentOutputs) {
-            mutableTransaction.addInput(inputToSign(unspentOutput))
-        }
-
-        mutableTransaction.recipientValue = unspentOutputInfo.recipientValue
-
-        // Add change output if needed
-        unspentOutputInfo.changeValue?.let { changeValue ->
-            val changePubKey = publicKeyManager.changePublicKey()
-            val changeAddress = addressConverter.convert(changePubKey, changeScriptType)
-
-            mutableTransaction.changeAddress = changeAddress
-            mutableTransaction.changeValue = changeValue
-        }
-
-        pluginManager.processInputs(mutableTransaction)
-    }
-
-    fun setInputs(mutableTransaction: MutableTransaction, unspentOutput: UnspentOutput, feeRate: Int) {
+    fun setInputs(
+        mutableTransaction: MutableTransaction,
+        unspentOutput: UnspentOutput,
+        feeRate: Int
+    ) {
         if (unspentOutput.output.scriptType != ScriptType.P2SH) {
             throw TransactionBuilder.BuilderException.NotSupportedScriptType()
         }
 
         // Calculate fee
         val transactionSize =
-            transactionSizeCalculator.transactionSize(listOf(unspentOutput.output), listOf(mutableTransaction.recipientAddress.scriptType), 0)
-        val fee = transactionSize * feeRate
+            transactionSizeCalculator.transactionSize(
+                previousOutputs = listOf(unspentOutput.output),
+                outputs = listOf(mutableTransaction.recipientAddress.scriptType),
+                pluginDataOutputSize = 0
+            )
 
-        if (unspentOutput.output.value < fee) {
+        val fee = transactionSize * feeRate
+        val value = unspentOutput.output.value
+        if (value < fee) {
             throw TransactionBuilder.BuilderException.FeeMoreThanValue()
         }
-
-        // Add to mutable transaction
         mutableTransaction.addInput(inputToSign(unspentOutput))
-        mutableTransaction.recipientValue = unspentOutput.output.value - fee
+        mutableTransaction.recipientValue = value - fee
+    }
+
+    @Throws(SendValueErrors::class)
+    fun setInputs(
+        mutableTransaction: MutableTransaction,
+        feeRate: Int,
+        senderPay: Boolean,
+        unspentOutputs: List<UnspentOutput>?,
+        sortType: TransactionDataSortType
+    ): OutputInfo {
+        val unspentOutputInfo: SelectedUnspentOutputInfo
+        if (unspentOutputs != null) {
+            val params = UnspentOutputQueue.Parameters(
+                value = mutableTransaction.recipientValue,
+                senderPay = senderPay,
+                fee = feeRate,
+                outputsLimit = null,
+                outputScriptType = mutableTransaction.recipientAddress.scriptType,
+                changeType = changeScriptType,  // Assuming changeScriptType is defined somewhere
+                pluginDataOutputSize = mutableTransaction.getPluginDataOutputSize()
+            )
+            val queue = UnspentOutputQueue(
+                params,
+                transactionSizeCalculator,
+                dustCalculator,
+            )
+            queue.set(unspentOutputs)
+            unspentOutputInfo = queue.calculate()
+        } else {
+            val value = mutableTransaction.recipientValue
+            unspentOutputInfo = unspentOutputSelector.select(
+                value,
+                feeRate,
+                mutableTransaction.recipientAddress.scriptType,
+                changeScriptType,  // Assuming changeScriptType is defined somewhere
+                senderPay,
+                mutableTransaction.getPluginDataOutputSize()
+            )
+        }
+
+        val sortedUnspentOutputs =
+            transactionDataSorterFactory.sorter(sortType).sortUnspents(unspentOutputInfo.outputs)
+
+        for (unspentOutput in sortedUnspentOutputs) {
+            mutableTransaction.addInput(inputToSign(unspentOutput))
+        }
+
+        mutableTransaction.recipientValue = unspentOutputInfo.recipientValue
+
+        // Add change output if needed
+        var changeInfo: ChangeInfo? = null
+        unspentOutputInfo.changeValue?.let { changeValue ->
+            val changePubKey = publicKeyManager.changePublicKey()
+            val changeAddress = addressConverter.convert(changePubKey, changeScriptType)
+
+            mutableTransaction.changeAddress = changeAddress
+            mutableTransaction.changeValue = changeValue
+            changeInfo = ChangeInfo(address = changeAddress, value = changeValue)
+        }
+
+        pluginManager.processInputs(mutableTransaction)
+        return OutputInfo(
+            unspentOutputs = sortedUnspentOutputs,
+            changeInfo = changeInfo
+        )
     }
 
     private fun inputToSign(unspentOutput: UnspentOutput): InputToSign {
         val previousOutput = unspentOutput.output
-        val transactionInput = TransactionInput(previousOutput.transactionHash, previousOutput.index.toLong())
+        val transactionInput =
+            TransactionInput(previousOutput.transactionHash, previousOutput.index.toLong())
 
         return InputToSign(transactionInput, previousOutput, unspentOutput.publicKey)
     }
+
+    data class ChangeInfo(
+        val address: Address,
+        val value: Long
+    )
+
+    data class OutputInfo(
+        val unspentOutputs: List<UnspentOutput>,
+        val changeInfo: ChangeInfo?
+    )
 }

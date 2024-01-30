@@ -1,15 +1,27 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'maven-publish'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+            }
+        }
+    }
+}
 
 android {
-    compileSdkVersion 31
+    namespace 'io.horizontalsystems.litecoinkit'
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 23
-        targetSdkVersion 29
-        versionCode 1
-        versionName "1.0"
+        targetSdkVersion 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
@@ -27,16 +39,11 @@ android {
         test.java.srcDirs += 'src/test/kotlin'
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    namespace 'io.horizontalsystems.litecoinkit'
+    kotlinOptions { jvmTarget = '17' }
 
 }
 
@@ -55,11 +62,7 @@ dependencies {
     api project(':bitcoin-kit-android:bitcoincore')
     api project(':bitcoin-kit-android:hodler')
 
-    testImplementation 'junit:junit:4.13'
+    testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-}
-
-repositories {
-    mavenCentral()
 }

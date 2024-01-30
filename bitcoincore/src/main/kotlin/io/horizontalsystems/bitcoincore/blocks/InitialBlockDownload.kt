@@ -1,10 +1,12 @@
 package io.horizontalsystems.bitcoincore.blocks
 
 import io.horizontalsystems.bitcoincore.core.IBlockSyncListener
+import io.horizontalsystems.bitcoincore.core.IInitialDownload
 import io.horizontalsystems.bitcoincore.models.Checkpoint
 import io.horizontalsystems.bitcoincore.models.InventoryItem
 import io.horizontalsystems.bitcoincore.models.MerkleBlock
-import io.horizontalsystems.bitcoincore.network.peer.*
+import io.horizontalsystems.bitcoincore.network.peer.Peer
+import io.horizontalsystems.bitcoincore.network.peer.PeerManager
 import io.horizontalsystems.bitcoincore.network.peer.task.GetBlockHashesTask
 import io.horizontalsystems.bitcoincore.network.peer.task.GetMerkleBlocksTask
 import io.horizontalsystems.bitcoincore.network.peer.task.PeerTask
@@ -14,18 +16,18 @@ import java.util.logging.Logger
 import kotlin.math.max
 
 class InitialBlockDownload(
-        private var blockSyncer: BlockSyncer,
-        private val peerManager: PeerManager,
-        private val merkleBlockExtractor: MerkleBlockExtractor)
-    : IInventoryItemsHandler, IPeerTaskHandler, PeerGroup.Listener, GetMerkleBlocksTask.MerkleBlockHandler {
+    private var blockSyncer: BlockSyncer,
+    private val peerManager: PeerManager,
+    private val merkleBlockExtractor: MerkleBlockExtractor
+) : IInitialDownload, GetMerkleBlocksTask.MerkleBlockHandler {
 
-    var listener: IBlockSyncListener? = null
-    val syncedPeers = CopyOnWriteArrayList<Peer>()
+    override var listener: IBlockSyncListener? = null
+    override val syncedPeers = CopyOnWriteArrayList<Peer>()
     private val peerSyncListeners = mutableListOf<IPeerSyncListener>()
     private val peerSwitchMinimumRatio = 1.5
 
     @Volatile
-    var syncPeer: Peer? = null
+    override var syncPeer: Peer? = null
     private var selectNewPeer = false
     private val peersQueue = Executors.newSingleThreadExecutor()
     private val logger = Logger.getLogger("IBD")
@@ -35,7 +37,7 @@ class InitialBlockDownload(
     private var minReceiveBytes = 100_000.0
     private var slowPeersDisconnected = 0
 
-    fun addPeerSyncListener(peerSyncListener: IPeerSyncListener) {
+    override fun addPeerSyncListener(peerSyncListener: IPeerSyncListener) {
         peerSyncListeners.add(peerSyncListener)
     }
 
@@ -59,10 +61,12 @@ class InitialBlockDownload(
                 }
                 true
             }
+
             is GetMerkleBlocksTask -> {
                 blockSyncer.downloadIterationCompleted()
                 true
             }
+
             else -> false
         }
     }
@@ -150,7 +154,7 @@ class InitialBlockDownload(
                 return
             }
 
-            val blockHashes = blockSyncer.getBlockHashes()
+            val blockHashes = blockSyncer.getBlockHashes(limit = 500)
             if (blockHashes.isEmpty()) {
                 peer.synced = peer.blockHashesSynced
             } else {

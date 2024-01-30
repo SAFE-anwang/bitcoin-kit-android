@@ -16,16 +16,17 @@ class RegTest : Network() {
     override var addressSegwitHrp: String = "tb"
     override var addressScriptVersion: Int = 196
     override var coinType: Int = 1
+    override val blockchairChainId: String = ""
 
     override val maxBlockSize = 1_000_000
     override val dustRelayTxFee = 3000 // https://github.com/bitcoin/bitcoin/blob/c536dfbcb00fb15963bf5d507b7017c241718bf6/src/policy/policy.h#L50
     override val syncableFromApi = false
 
     override var dnsSeeds = listOf(
-            "btc-regtest.horizontalsystems.xyz",
-            "btc01-regtest.horizontalsystems.xyz",
-            "btc02-regtest.horizontalsystems.xyz",
-            "btc03-regtest.horizontalsystems.xyz"
+            "btc-regtest.blocksdecoded.com",
+            "btc01-regtest.blocksdecoded.com",
+            "btc02-regtest.blocksdecoded.com",
+            "btc03-regtest.blocksdecoded.com"
     )
 
 }

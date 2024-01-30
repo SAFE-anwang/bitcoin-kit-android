@@ -36,6 +36,10 @@ class PublicKeyManager(
         return getPublicKey(external = false)
     }
 
+    override fun usedExternalPublicKeys(change: Boolean): List<PublicKey> {
+        return storage.getPublicKeysWithUsedState().filter { it.publicKey.external == !change && it.used }.map { it.publicKey }
+    }
+
     override fun getPublicKeyByPath(path: String): PublicKey {
         val parts = path.split("/").map { it.toInt() }
 

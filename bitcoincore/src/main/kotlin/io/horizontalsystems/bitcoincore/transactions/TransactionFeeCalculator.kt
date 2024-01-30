@@ -3,7 +3,9 @@ package io.horizontalsystems.bitcoincore.transactions
 import io.horizontalsystems.bitcoincore.core.IPluginData
 import io.horizontalsystems.bitcoincore.core.IPublicKeyManager
 import io.horizontalsystems.bitcoincore.core.IRecipientSetter
+import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
+import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.transactions.builder.InputSetter
 import io.horizontalsystems.bitcoincore.transactions.builder.MutableTransaction
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
@@ -14,22 +16,50 @@ class TransactionFeeCalculator(
     private val inputSetter: InputSetter,
     private val addressConverter: AddressConverterChain,
     private val publicKeyManager: IPublicKeyManager,
-    private val changeScriptType: ScriptType
+    private val changeScriptType: ScriptType,
 ) {
 
-    fun fee(value: Long, feeRate: Int, senderPay: Boolean, toAddress: String?, pluginData: Map<Byte, IPluginData>): Long {
+    fun sendInfo(
+        value: Long,
+        feeRate: Int,
+        senderPay: Boolean,
+        toAddress: String?,
+        unspentOutputs: List<UnspentOutput>?,
+        pluginData: Map<Byte, IPluginData>
+    ): BitcoinSendInfo {
         val mutableTransaction = MutableTransaction()
 
-        recipientSetter.setRecipient(mutableTransaction, toAddress ?: sampleAddress(), value, pluginData, true)
-        inputSetter.setInputs(mutableTransaction, feeRate, senderPay, TransactionDataSortType.None)
+        recipientSetter.setRecipient(
+            mutableTransaction = mutableTransaction,
+            toAddress = toAddress ?: sampleAddress(),
+            value = value,
+            pluginData = pluginData,
+            skipChecking = true
+        )
 
-        val inputsTotalValue = mutableTransaction.inputsToSign.map { it.previousOutput.value }.sum()
+        val outputInfo = inputSetter.setInputs(
+            mutableTransaction = mutableTransaction,
+            feeRate = feeRate,
+            senderPay = senderPay,
+            unspentOutputs = unspentOutputs,
+            sortType = TransactionDataSortType.None
+        )
+
+        val inputsTotalValue = mutableTransaction.inputsToSign.sumOf { it.previousOutput.value }
         val outputsTotalValue = mutableTransaction.recipientValue + mutableTransaction.changeValue
 
-        return inputsTotalValue - outputsTotalValue
+        return BitcoinSendInfo(
+            unspentOutputs = outputInfo.unspentOutputs,
+            fee = inputsTotalValue - outputsTotalValue,
+            changeValue = outputInfo.changeInfo?.value,
+            changeAddress = outputInfo.changeInfo?.address
+        )
     }
 
     private fun sampleAddress(): String {
-        return addressConverter.convert(publicKey = publicKeyManager.changePublicKey(), scriptType = changeScriptType).stringValue
+        return addressConverter.convert(
+            publicKey = publicKeyManager.changePublicKey(),
+            scriptType = changeScriptType
+        ).stringValue
     }
 }

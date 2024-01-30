@@ -11,17 +11,45 @@ class TransactionCreator(
     private val builder: TransactionBuilder,
     private val processor: PendingTransactionProcessor,
     private val transactionSender: TransactionSender,
-    private val bloomFilterManager: BloomFilterManager) {
+    private val bloomFilterManager: BloomFilterManager
+) {
 
     @Throws
-    fun create(toAddress: String, value: Long, feeRate: Int, senderPay: Boolean, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>, unlockedHeight:Long?, reverseHex: String?): FullTransaction {
+    fun create(
+        toAddress: String,
+        value: Long,
+        feeRate: Int,
+        senderPay: Boolean,
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutput>?,
+        pluginData: Map<Byte, IPluginData>,
+        unlockedHeight:Long?,
+        reverseHex: String?
+    ): FullTransaction {
         return create {
-            builder.buildTransaction(toAddress, value, feeRate, senderPay, sortType, pluginData, unlockedHeight, reverseHex)
+            builder.buildTransaction(
+                toAddress = toAddress,
+                value = value,
+                feeRate = feeRate,
+                senderPay = senderPay,
+                sortType = sortType,
+                unspentOutputs = unspentOutputs,
+                pluginData = pluginData,
+                unlockedHeight = unlockedHeight,
+                reverseHex = reverseHex
+            )
         }
     }
 
     @Throws
-    fun create(unspentOutput: UnspentOutput, toAddress: String, feeRate: Int, sortType: TransactionDataSortType, unlockedHeight:Long?, reverseHex: String?): FullTransaction {
+    fun create(
+        unspentOutput: UnspentOutput,
+        toAddress: String,
+        feeRate: Int,
+        sortType: TransactionDataSortType,
+        unlockedHeight:Long?,
+        reverseHex: String?
+    ): FullTransaction {
         return create {
             builder.buildTransaction(unspentOutput, toAddress, feeRate, sortType, unlockedHeight, reverseHex)
         }

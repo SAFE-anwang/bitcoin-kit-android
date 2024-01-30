@@ -227,7 +227,7 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
     private fun updateFee() {
         try {
             feeLiveData.value = amount?.let {
-                fee(it, address)
+                fee(it, address).fee
             }
         } catch (e: Exception) {
             errorLiveData.value = e.message ?: e.javaClass.simpleName
@@ -235,7 +235,7 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
     }
 
     private fun fee(value: Long, address: String? = null): Long {
-        return safeKit.fee(value, address, feeRate = feePriority.feeRate, pluginData = getPluginData())
+        return safeKit.sendInfo(value, address, feeRate = feePriority.feeRate, unspentOutputs = null, pluginData = getPluginData())
     }
 
     private fun getPluginData(): MutableMap<Byte, IPluginData> {

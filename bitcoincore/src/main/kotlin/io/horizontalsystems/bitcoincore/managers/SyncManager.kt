@@ -1,19 +1,26 @@
 package io.horizontalsystems.bitcoincore.managers
 
-import android.util.Log
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.KitState
-import io.horizontalsystems.bitcoincore.core.*
+import io.horizontalsystems.bitcoincore.BitcoinCore.SyncMode
+import io.horizontalsystems.bitcoincore.apisync.legacy.ApiSyncer
+import io.horizontalsystems.bitcoincore.core.IApiSyncer
+import io.horizontalsystems.bitcoincore.core.IApiSyncerListener
+import io.horizontalsystems.bitcoincore.core.IBlockSyncListener
+import io.horizontalsystems.bitcoincore.core.IConnectionManagerListener
+import io.horizontalsystems.bitcoincore.core.IKitStateListener
+import io.horizontalsystems.bitcoincore.core.IStorage
 import io.horizontalsystems.bitcoincore.network.peer.PeerGroup
 import kotlin.math.max
 
 class SyncManager(
-        private val connectionManager: ConnectionManager,
-        private val initialSyncer: InitialSyncer,
-        private val peerGroup: PeerGroup,
-        private val apiSyncStateManager: ApiSyncStateManager,
-        bestBlockHeight: Int
-) : InitialSyncer.Listener, IConnectionManagerListener, IBlockSyncListener, IApiSyncListener {
+    private val connectionManager: ConnectionManager,
+    private val apiSyncer: IApiSyncer,
+    private val peerGroup: PeerGroup,
+    private val storage: IStorage,
+    private val syncMode: SyncMode,
+    bestBlockHeight: Int
+) : IApiSyncerListener, IConnectionManagerListener, IBlockSyncListener {
 
     var listener: IKitStateListener? = null
 
@@ -21,7 +28,7 @@ class SyncManager(
         private set(value) {
             if (value != field) {
                 field = value
-                
+
                 listener?.onKitStateUpdate(field)
             }
         }
@@ -34,18 +41,19 @@ class SyncManager(
     private var initialBestBlockHeight = bestBlockHeight
     private var currentBestBlockHeight = bestBlockHeight
     private var foundTransactionsCount = 0
+    private var forceAddedBlocksTotal: Int = 0
 
     private fun startSync() {
-        if (apiSyncStateManager.restored) {
-            startPeerGroup()
-        } else {
+        if (apiSyncer.willSync) {
             startInitialSync()
+        } else {
+            startPeerGroup()
         }
     }
 
     private fun startInitialSync() {
         syncState = KitState.ApiSyncing(0)
-        initialSyncer.sync()
+        apiSyncer.sync()
     }
 
     private fun startPeerGroup() {
@@ -54,7 +62,16 @@ class SyncManager(
     }
 
     fun start() {
-        if (syncState !is KitState.NotSynced) return
+        if (syncMode is SyncMode.Blockchair) {
+            when (syncState) {
+                is KitState.ApiSyncing,
+                is KitState.Syncing -> return
+
+                else -> Unit
+            }
+        } else {
+            if (syncState !is KitState.NotSynced) return
+        }
 
         if (connectionManager.isConnected) {
             startSync()
@@ -66,14 +83,14 @@ class SyncManager(
     fun stop() {
         when (syncState) {
             is KitState.ApiSyncing -> {
-                initialSyncer.terminate()
+                apiSyncer.terminate()
             }
+
             is KitState.Syncing, is KitState.Synced -> {
                 peerGroup.stop()
             }
-            else -> {
 
-            }
+            else -> Unit
         }
         syncState = KitState.NotSynced(BitcoinCore.StateError.NotStarted())
     }
@@ -92,21 +109,28 @@ class SyncManager(
     }
 
     //
-    // InitialSyncer Listener
+    // IApiSyncerListener
     //
 
     override fun onSyncSuccess() {
-        apiSyncStateManager.restored = true
-        startPeerGroup()
+        forceAddedBlocksTotal = storage.getApiBlockHashesCount()
+
+        if (peerGroup.running) {
+            if (foundTransactionsCount > 0) {
+                foundTransactionsCount = 0
+                syncState = KitState.Syncing(0.0)
+                peerGroup.refresh()
+            } else {
+                syncState = KitState.Synced
+            }
+        } else {
+            startPeerGroup()
+        }
     }
 
     override fun onSyncFailed(error: Throwable) {
         syncState = KitState.NotSynced(error)
     }
-
-    //
-    // IApiSyncListener
-    //
 
     override fun onTransactionsFound(count: Int) {
         foundTransactionsCount += count
@@ -137,6 +161,24 @@ class SyncManager(
         }
     }
 
+    override fun onBlockForceAdded() {
+        if (syncMode !is SyncMode.Blockchair) {
+            syncState = KitState.Syncing(0.0)
+            return
+        }
+
+        val forceAddedBlocks = forceAddedBlocksTotal - storage.getApiBlockHashesCount()
+        syncState = when {
+            forceAddedBlocks >= forceAddedBlocksTotal -> {
+                KitState.Synced
+            }
+
+            else -> {
+                KitState.Syncing(forceAddedBlocks / forceAddedBlocksTotal.toDouble())
+            }
+        }
+    }
+
     override fun onBlockSyncFinished() {
         syncState = KitState.Synced
     }
@@ -144,6 +186,6 @@ class SyncManager(
     fun updateMaxHeight(maxHeight: Int, initBlockHeight: Int) {
         initialBestBlockHeight = initBlockHeight
         currentBestBlockHeight = maxHeight
-        initialSyncer.updateMaxHeight(maxHeight)
+        (apiSyncer as ApiSyncer).updateMaxHeight(maxHeight)
     }
 }
