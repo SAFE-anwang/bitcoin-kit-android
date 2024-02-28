@@ -23,6 +23,7 @@ class TransactionCreator(
         sortType: TransactionDataSortType,
         unspentOutputs: List<UnspentOutput>?,
         pluginData: Map<Byte, IPluginData>,
+        rbfEnabled: Boolean,
         unlockedHeight:Long?,
         reverseHex: String?
     ): FullTransaction {
@@ -35,6 +36,7 @@ class TransactionCreator(
                 sortType = sortType,
                 unspentOutputs = unspentOutputs,
                 pluginData = pluginData,
+                rbfEnabled = rbfEnabled,
                 unlockedHeight = unlockedHeight,
                 reverseHex = reverseHex
             )
@@ -47,11 +49,12 @@ class TransactionCreator(
         toAddress: String,
         feeRate: Int,
         sortType: TransactionDataSortType,
+        rbfEnabled: Boolean,
         unlockedHeight:Long?,
         reverseHex: String?
     ): FullTransaction {
         return create {
-            builder.buildTransaction(unspentOutput, toAddress, feeRate, sortType, unlockedHeight, reverseHex)
+            builder.buildTransaction(unspentOutput, toAddress, feeRate, sortType, rbfEnabled, unlockedHeight, reverseHex)
         }
     }
 
