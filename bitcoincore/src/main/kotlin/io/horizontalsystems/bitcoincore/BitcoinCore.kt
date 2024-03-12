@@ -228,6 +228,7 @@ class BitcoinCore(
 
     fun send(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>,
              unspentOutputs: List<UnspentOutputInfo>?,
+             rbfEnabled: Boolean,
              unlockedHeight: Long?,     // UPDATE FOR SAFE
              reverseHex: String?     // UPDATE FOR SAFE
     ): FullTransaction {
@@ -236,11 +237,12 @@ class BitcoinCore(
                 unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
             }
         }
-        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, outputs, pluginData, unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, outputs, pluginData, rbfEnabled, unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(hash: ByteArray, scriptType: ScriptType, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType,
              unspentOutputs: List<UnspentOutputInfo>?,
+             rbfEnabled: Boolean,
              unlockedHeight: Long?,    // UPDATE FOR SAFE
              reverseHex: String?,     // UPDATE FOR SAFE
     ): FullTransaction {
@@ -250,7 +252,10 @@ class BitcoinCore(
                 unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
             }
         }
-        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, outputs, mapOf(), unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, outputs,
+                mapOf(),
+                rbfEnabled,
+                unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(
