@@ -31,7 +31,7 @@ object RetrofitUtils {
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
-            .addInterceptor(headersInterceptor);
+//            .addInterceptor(headersInterceptor);
         setUnsafeSocketFactory(httpBuilder)
         return httpBuilder.build();
     }
