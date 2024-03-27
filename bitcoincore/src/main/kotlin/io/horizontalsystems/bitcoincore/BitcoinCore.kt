@@ -163,7 +163,7 @@ class BitcoinCoreBuilder {
 
         val dataProvider = DataProvider(storage, unspentOutputProvider, transactionInfoConverter)
 
-        val connectionManager = ConnectionManager(context)
+        val connectionManager = this.connectionManager ?: ConnectionManager(context)
 
         var privateWallet: IPrivateWallet? = null
         val publicKeyFetcher: IPublicKeyFetcher
