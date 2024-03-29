@@ -13,6 +13,10 @@ import io.horizontalsystems.bitcoincore.core.IStorage
 import io.horizontalsystems.bitcoincore.core.PluginManager
 import io.horizontalsystems.bitcoincore.core.description
 import io.horizontalsystems.bitcoincore.core.scriptType
+import android.content.Context
+import io.horizontalsystems.bitcoincore.blocks.*
+import io.horizontalsystems.bitcoincore.blocks.validators.IBlockValidator
+import io.horizontalsystems.bitcoincore.core.*
 import io.horizontalsystems.bitcoincore.extensions.toHexString
 import io.horizontalsystems.bitcoincore.managers.IRestoreKeyConverter
 import io.horizontalsystems.bitcoincore.managers.IUnspentOutputSelector
@@ -173,15 +177,14 @@ class BitcoinCore(
         syncManager.stop()
     }
 
-    fun updateLastBlockInfo(syncMode: SyncMode, network: Network) {
-        val checkpoint = Checkpoint.resolveCheckpoint(syncMode, network, storage)
-        val lastBlock = storage.lastBlock()
-        if (lastBlock != null && lastBlock.height < checkpoint.block.height) {
+    fun updateLastBlockInfo(syncMode: SyncMode, network: Network, checkpoint: Checkpoint) {
+//        val lastBlock = storage.lastBlock()
+//        if (lastBlock != null && lastBlock.height < checkpoint.block.height) {
             storage.saveBlock(checkpoint.block)
             checkpoint.additionalBlocks.forEach { block ->
                 storage.saveBlock(block)
             }
-        }
+//        }
         dataProvider.updateLastBlockInfo()
         (initialDownload as InitialBlockDownload).updateCheckpoint(checkpoint)
         syncManager.updateMaxHeight(lastBlockInfo?.height ?: 0, checkpoint.block.height)

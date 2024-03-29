@@ -185,7 +185,7 @@ class SyncManager(
 
     fun updateMaxHeight(maxHeight: Int, initBlockHeight: Int) {
         initialBestBlockHeight = initBlockHeight
-        currentBestBlockHeight = maxHeight
-        (apiSyncer as ApiSyncer).updateMaxHeight(maxHeight)
+        currentBestBlockHeight = initBlockHeight
+        (apiSyncer as ApiSyncer).updateMaxHeight(initBlockHeight)
     }
 }

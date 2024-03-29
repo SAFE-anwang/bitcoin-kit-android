@@ -25,34 +25,37 @@ class InsightApi(host: String) : IApiTransactionProvider {
 
     private fun fetchTransactions(addrs: List<String>, txs: MutableList<TransactionItem>, from: Int, to: Int) {
         val joinedAddresses = addrs.joinToString(",")
-        val json = apiManager.doOkHttpGet("addrs/$joinedAddresses/txs?from=$from&to=$to").asObject()
+        try {
+            val json = apiManager.doOkHttpGet("addrs/$joinedAddresses/txs?from=$from&to=$to").asObject()
+            val totalItems = json["totalItems"].asInt()
+            val receivedTo = json["to"].asInt()
 
-        val totalItems = json["totalItems"].asInt()
-        val receivedTo = json["to"].asInt()
+            val items = json["items"].asArray()
+            for (item in items) {
+                val tx = item.asObject()
 
-        val items = json["items"].asArray()
-        for (item in items) {
-            val tx = item.asObject()
+                val blockHash = tx["blockhash"] ?: continue
+                val blockheight = tx["blockheight"] ?: continue
+                val addressItems = mutableListOf<AddressItem>()
 
-            val blockHash = tx["blockhash"] ?: continue
-            val blockheight = tx["blockheight"] ?: continue
-            val addressItems = mutableListOf<AddressItem>()
+                for (outputItem in tx["vout"].asArray()) {
+                    val outputJson = outputItem.asObject()
 
-            for (outputItem in tx["vout"].asArray()) {
-                val outputJson = outputItem.asObject()
+                    val scriptJson = (outputJson["scriptPubKey"] ?: continue).asObject()
+                    val script = (scriptJson["hex"] ?: continue).asString()
+                    val addresses = (scriptJson["addresses"] ?: continue).asArray()
 
-                val scriptJson = (outputJson["scriptPubKey"] ?: continue).asObject()
-                val script = (scriptJson["hex"] ?: continue).asString()
-                val addresses = (scriptJson["addresses"] ?: continue).asArray()
+                    addressItems.add(AddressItem(script, addresses[0].asString()))
+                }
 
-                addressItems.add(AddressItem(script, addresses[0].asString()))
+                txs.add(TransactionItem(blockHash.asString(), blockheight.asInt(), addressItems))
             }
 
-            txs.add(TransactionItem(blockHash.asString(), blockheight.asInt(), addressItems))
-        }
-
-        if (totalItems > to) {
-            fetchTransactions(addrs, txs, receivedTo, receivedTo + 50)
+            if (totalItems > to) {
+                fetchTransactions(addrs, txs, receivedTo, receivedTo + 50)
+            }
+        } catch (e: Exception) {
+            fetchTransactions(addrs, txs, from, to)
         }
     }
 }

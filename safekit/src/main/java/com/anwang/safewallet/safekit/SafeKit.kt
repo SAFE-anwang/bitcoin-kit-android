@@ -97,8 +97,9 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             networkType: NetworkType = defaultNetworkType,
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
-            confirmationsThreshold: Int = defaultConfirmationsThreshold
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+            confirmationsThreshold: Int = defaultConfirmationsThreshold,
+            connectionManager: ConnectionManager
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, connectionManager)
 
     constructor(
         context: Context,
@@ -107,8 +108,9 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
-    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        connectionManager: ConnectionManager
+    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold, connectionManager)
 
     constructor(
             context: Context,
@@ -117,7 +119,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             networkType: NetworkType = defaultNetworkType,
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
-            confirmationsThreshold: Int = defaultConfirmationsThreshold
+            confirmationsThreshold: Int = defaultConfirmationsThreshold,
+            connectionManager: ConnectionManager
     ) {
         val coreDatabase = CoreDatabase.getInstance(context, getDatabaseNameCore(networkType, walletId, syncMode))
         val dashDatabase = DashKitDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
@@ -181,7 +184,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setApiSyncStateManager(apiSyncStateManager)
                 .setTransactionInfoConverter(dashTransactionInfoConverter)
                 .setBlockValidator(blockValidatorSet)
-//                .setConnectionManager(connectionManager)
+                .setConnectionManager(connectionManager)
 //                .addPlugin(HodlerPlugin(coreBuilder.addressConverter, coreStorage, BlockMedianTimeHelper(coreStorage)))
                 .build()
 
