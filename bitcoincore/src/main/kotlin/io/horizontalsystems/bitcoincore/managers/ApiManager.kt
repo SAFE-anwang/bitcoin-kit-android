@@ -2,8 +2,10 @@ package io.horizontalsystems.bitcoincore.managers
 
 import com.eclipsesource.json.Json
 import com.eclipsesource.json.JsonValue
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.BufferedOutputStream
 import java.io.BufferedWriter
 import java.io.IOException
@@ -30,6 +32,7 @@ class ApiManager(private val host: String) {
                         connectTimeout = 5000
                         readTimeout = 60000
                         setRequestProperty("Accept", "application/json")
+                        setRequestProperty("content-type", "application/json")
                     }.getInputStream()
         } catch (exception: IOException) {
             throw ApiManagerException.Other("${exception.javaClass.simpleName}: $host")
@@ -46,6 +49,7 @@ class ApiManager(private val host: String) {
             val url = URL(path)
             val urlConnection = url.openConnection() as HttpURLConnection
             urlConnection.requestMethod = "POST"
+            urlConnection.setRequestProperty("Content-Type", "application/json")
             val out = BufferedOutputStream(urlConnection.outputStream)
             val writer = BufferedWriter(OutputStreamWriter(out, "UTF-8"))
             writer.write(data)
@@ -95,6 +99,7 @@ class ApiManager(private val host: String) {
             throw ApiManagerException.Other("${e.javaClass.simpleName}: $host, ${e.localizedMessage}")
         }
     }
+
 }
 
 sealed class ApiManagerException : Exception() {

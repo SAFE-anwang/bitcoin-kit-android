@@ -288,7 +288,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             val insightApiProvider = InsightApi("https://chain.anwang.org/insight-api-safe")
 
             if (syncMode is SyncMode.Blockchair) {
-                val blockchairApi = BlockchairApi(syncMode.key, network.blockchairChainId)
+                val blockchairApi = BlockchairApi(network.blockchairChainId)
                 val blockchairBlockHashFetcher = BlockchairBlockHashFetcher(blockchairApi)
                 val blockchairProvider = BlockchairTransactionProvider(blockchairApi, blockchairBlockHashFetcher)
 
@@ -335,7 +335,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         }
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
-            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair(""))) {
+            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair())) {
                 try {
                     SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseNameCore(networkType, walletId, syncMode)))
                     SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseName(networkType, walletId, syncMode)))

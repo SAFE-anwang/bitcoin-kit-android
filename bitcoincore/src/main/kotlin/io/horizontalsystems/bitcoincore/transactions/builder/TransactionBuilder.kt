@@ -11,12 +11,12 @@ class TransactionBuilder(
     private val recipientSetter: IRecipientSetter,
     private val outputSetter: OutputSetter,
     private val inputSetter: InputSetter,
-    private val signer: TransactionSigner,
     private val lockTimeSetter: LockTimeSetter
 ) {
 
     fun buildTransaction(
         toAddress: String,
+        memo: String?,
         value: Long,
         feeRate: Int,
         senderPay: Boolean,
@@ -26,7 +26,7 @@ class TransactionBuilder(
         rbfEnabled: Boolean,
         unlockedHeight: Long?,  /* UPDATE FOR SAFE */
         reverseHex: String?  /* UPDATE FOR SAFE */
-    ): FullTransaction {
+    ): MutableTransaction {
         val mutableTransaction = MutableTransaction()
         if ( unlockedHeight != null ) {
             mutableTransaction.unlockedHeight = unlockedHeight;
@@ -34,25 +34,26 @@ class TransactionBuilder(
         if (reverseHex != null) {
             mutableTransaction.reverseHex = reverseHex
         }
-        recipientSetter.setRecipient(mutableTransaction, toAddress, value, pluginData, false)
+
+        recipientSetter.setRecipient(mutableTransaction, toAddress, value, pluginData, false, memo)
         inputSetter.setInputs(mutableTransaction, feeRate, senderPay, unspentOutputs, sortType, rbfEnabled)
         lockTimeSetter.setLockTime(mutableTransaction)
 
         outputSetter.setOutputs(mutableTransaction, sortType)
-        signer.sign(mutableTransaction)
 
-        return mutableTransaction.build()
+        return mutableTransaction
     }
 
     fun buildTransaction(
         unspentOutput: UnspentOutput,
         toAddress: String,
+        memo: String?,
         feeRate: Int,
         sortType: TransactionDataSortType,
         rbfEnabled: Boolean,
         unlockedHeight: Long?,  /* UPDATE FOR SAFE */
         reverseHex: String?  /* UPDATE FOR SAFE */
-    ): FullTransaction {
+    ): MutableTransaction {
         val mutableTransaction = MutableTransaction(false)
         if ( unlockedHeight != null ){
             mutableTransaction.unlockedHeight = unlockedHeight;
@@ -60,14 +61,21 @@ class TransactionBuilder(
         if (reverseHex != null) {
             mutableTransaction.reverseHex = reverseHex
         }
-        recipientSetter.setRecipient(mutableTransaction, toAddress, unspentOutput.output.value, mapOf(), false)
+
+        recipientSetter.setRecipient(
+            mutableTransaction,
+            toAddress,
+            unspentOutput.output.value,
+            mapOf(),
+            false,
+            memo
+        )
         inputSetter.setInputs(mutableTransaction, unspentOutput, feeRate, rbfEnabled)
         lockTimeSetter.setLockTime(mutableTransaction)
 
         outputSetter.setOutputs(mutableTransaction, sortType)
-        signer.sign(mutableTransaction)
 
-        return mutableTransaction.build()
+        return mutableTransaction
     }
 
     open class BuilderException : Exception() {

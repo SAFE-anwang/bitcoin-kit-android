@@ -134,6 +134,10 @@ class DataProvider(
 
     fun getSpendableUtxo() = unspentOutputProvider.getSpendableUtxo()
 
+    fun transactionInfo(fullInfo: FullTransactionInfo): TransactionInfo {
+        return transactionInfoConverter.transactionInfo(fullInfo)
+    }
+
     private fun blockInfo(block: Block) = BlockInfo(
             block.headerHash.toReversedHex(),
             block.height,

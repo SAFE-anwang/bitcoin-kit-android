@@ -84,7 +84,9 @@ import io.horizontalsystems.bitcoincore.network.peer.MempoolTransactions
 import io.horizontalsystems.bitcoincore.network.peer.PeerAddressManager
 import io.horizontalsystems.bitcoincore.network.peer.PeerGroup
 import io.horizontalsystems.bitcoincore.network.peer.PeerManager
+import io.horizontalsystems.bitcoincore.rbf.ReplacementTransactionBuilder
 import io.horizontalsystems.bitcoincore.serializers.BlockHeaderParser
+import io.horizontalsystems.bitcoincore.serializers.TransactionSerializer
 import io.horizontalsystems.bitcoincore.transactions.BlockTransactionProcessor
 import io.horizontalsystems.bitcoincore.transactions.PendingTransactionProcessor
 import io.horizontalsystems.bitcoincore.transactions.SendTransactionsOnPeersSynced
@@ -142,6 +144,8 @@ class BitcoinCoreBuilder {
     private var peerSize = 10
     private val plugins = mutableListOf<IPlugin>()
     private var handleAddrMessage = true
+    private var sendType: BitcoinCore.SendType = BitcoinCore.SendType.P2P
+    private var connectionManager:ConnectionManager? = null
 
     fun setContext(context: Context): BitcoinCoreBuilder {
         this.context = context
@@ -180,6 +184,11 @@ class BitcoinCoreBuilder {
 
     fun setSyncMode(syncMode: BitcoinCore.SyncMode): BitcoinCoreBuilder {
         this.syncMode = syncMode
+        return this
+    }
+
+    fun setSendType(sendType: BitcoinCore.SendType): BitcoinCoreBuilder {
+        this.sendType = sendType
         return this
     }
 
@@ -237,6 +246,11 @@ class BitcoinCoreBuilder {
         return this
     }
 
+    fun setConnectionManager(connectionManager: ConnectionManager): BitcoinCoreBuilder {
+        this.connectionManager = connectionManager
+        return this
+    }
+
     fun build(): BitcoinCore {
         val context = checkNotNull(this.context)
         val extendedKey = this.extendedKey
@@ -262,7 +276,7 @@ class BitcoinCoreBuilder {
 
         val dataProvider = DataProvider(storage, unspentOutputProvider, transactionInfoConverter)
 
-        val connectionManager = ConnectionManager(context)
+        val connectionManager = this.connectionManager ?: ConnectionManager(context)
 
         var privateWallet: IPrivateWallet? = null
         val publicKeyFetcher: IPublicKeyFetcher
@@ -343,13 +357,15 @@ class BitcoinCoreBuilder {
         val transactionExtractor = TransactionExtractor(addressConverter, storage, pluginManager, metadataExtractor)
 
         val conflictsResolver = TransactionConflictsResolver(storage)
+        val ignorePendingIncoming = syncMode is BitcoinCore.SyncMode.Blockchair
         val pendingTransactionProcessor = PendingTransactionProcessor(
             storage,
             transactionExtractor,
             publicKeyManager,
             irregularOutputFinder,
             dataProvider,
-            conflictsResolver
+            conflictsResolver,
+            ignorePendingIncoming
         )
         val invalidator = TransactionInvalidator(storage, transactionInfoConverter, dataProvider)
         val blockTransactionProcessor = BlockTransactionProcessor(
@@ -399,7 +415,7 @@ class BitcoinCoreBuilder {
                 val blockchairApi = if (apiTransactionProvider is BlockchairTransactionProvider) {
                     apiTransactionProvider.blockchairApi
                 } else {
-                    BlockchairApi(syncMode.key, network.blockchairChainId)
+                    BlockchairApi(network.blockchairChainId)
                 }
                 val lastBlockProvider = BlockchairLastBlockProvider(blockchairApi)
                 apiSyncer = BlockchairApiSyncer(
@@ -443,6 +459,7 @@ class BitcoinCoreBuilder {
         var transactionFeeCalculator: TransactionFeeCalculator? = null
         var transactionSender: TransactionSender? = null
         var transactionCreator: TransactionCreator? = null
+        var replacementTransactionBuilder: ReplacementTransactionBuilder? = null
 
         if (privateWallet != null) {
             val ecdsaInputSigner = EcdsaInputSigner(privateWallet, network)
@@ -462,8 +479,7 @@ class BitcoinCoreBuilder {
                 transactionDataSorterFactory
             )
             val lockTimeSetter = LockTimeSetter(storage)
-            val signer = TransactionSigner(ecdsaInputSigner, schnorrInputSigner)
-            val transactionBuilder = TransactionBuilder(recipientSetter, outputSetter, inputSetter, signer, lockTimeSetter)
+            val transactionBuilder = TransactionBuilder(recipientSetter, outputSetter, inputSetter, lockTimeSetter)
             transactionFeeCalculator = TransactionFeeCalculator(
                 recipientSetter,
                 inputSetter,
@@ -477,7 +493,9 @@ class BitcoinCoreBuilder {
                 peerManager,
                 initialDownload,
                 storage,
-                transactionSendTimer
+                transactionSendTimer,
+                sendType,
+                TransactionSerializer
             )
 
             dustCalculator = dustCalculatorInstance
@@ -485,8 +503,11 @@ class BitcoinCoreBuilder {
             transactionSender = transactionSenderInstance
 
             transactionSendTimer.listener = transactionSender
-
-            transactionCreator = TransactionCreator(transactionBuilder, pendingTransactionProcessor, transactionSenderInstance, bloomFilterManager)
+            val signer = TransactionSigner(ecdsaInputSigner, schnorrInputSigner)
+            transactionCreator = TransactionCreator(transactionBuilder, pendingTransactionProcessor, transactionSenderInstance, signer, bloomFilterManager)
+            replacementTransactionBuilder = ReplacementTransactionBuilder(
+                storage, transactionSizeCalculator, dustCalculator, metadataExtractor, pluginManager, unspentOutputProvider, publicKeyManager, conflictsResolver, lockTimeSetter
+            )
         }
 
         val bitcoinCore = BitcoinCore(
@@ -497,6 +518,7 @@ class BitcoinCoreBuilder {
             restoreKeyConverterChain,
             transactionCreator,
             transactionFeeCalculator,
+            replacementTransactionBuilder,
             paymentAddressParser,
             syncManager,
             purpose,

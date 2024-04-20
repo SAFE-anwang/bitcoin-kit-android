@@ -1,5 +1,7 @@
 package io.horizontalsystems.bitcoincore.apisync.blockchair
 
+import com.eclipsesource.json.Json
+import com.eclipsesource.json.JsonObject
 import io.horizontalsystems.bitcoincore.apisync.model.AddressItem
 import io.horizontalsystems.bitcoincore.apisync.model.BlockHeaderItem
 import io.horizontalsystems.bitcoincore.apisync.model.TransactionItem
@@ -12,10 +14,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 class BlockchairApi(
-    private val secretKey: String,
     private val chainId: String,
 ) {
-    private val apiManager = ApiManager("https://api.blockchair.com")
+    private val apiManager = ApiManager("https://api.blocksdecoded.com/v1/blockchair")
     private val limit = 10000
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
@@ -64,7 +65,7 @@ class BlockchairApi(
     }
 
     fun lastBlockHeader(): BlockHeaderItem {
-        val params = "?limit=0&key=$secretKey"
+        val params = "?limit=0"
         val url = "$chainId/stats"
         val response = apiManager.doOkHttpGet(url + params).asObject()
         val data = response.get("data").asObject()
@@ -77,6 +78,17 @@ class BlockchairApi(
         return BlockHeaderItem(hash.hexToByteArray(), height, timestamp!!)
     }
 
+    fun broadcastTransaction(rawTransactionHex: String) {
+        val apiManager = ApiManager("https://api.blockchair.com")
+        val url = "$chainId/push/transaction"
+
+        val body = JsonObject().apply {
+            this["data"] = Json.value(rawTransactionHex)
+        }.toString()
+
+        apiManager.post(url, body)
+    }
+
     private fun fetchTransactions(
         addresses: List<String>,
         stopHeight: Int? = null,
@@ -84,7 +96,7 @@ class BlockchairApi(
         receivedTransactionItems: List<Transaction> = emptyList()
     ): Pair<List<AddressItem>, List<Transaction>> {
         try {
-            val params = "?transaction_details=true&limit=$limit,0&offset=${receivedTransactionItems.size}&key=$secretKey"
+            val params = "?transaction_details=true&limit=$limit,0&offset=${receivedTransactionItems.size}"
             val url = "$chainId/dashboards/addresses/${addresses.joinToString(separator = ",")}"
             val response = apiManager.doOkHttpGet(url + params).asObject()
             val data = response.get("data").asObject()
@@ -126,7 +138,7 @@ class BlockchairApi(
 
     private fun dateStringToTimestamp(date: String): Long? {
         return try {
-            dateFormat.parse(date)?.time?.let {  it / 1000 }
+            dateFormat.parse(date)?.time?.let { it / 1000 }
         } catch (e: ParseException) {
             null
         }
@@ -134,7 +146,7 @@ class BlockchairApi(
 
     private fun fetchBlockHashes(heights: List<Int>): Map<Int, String> {
         try {
-            val params = "?limit=0&key=$secretKey"
+            val params = "?limit=0"
             val url = "$chainId/dashboards/blocks/${heights.joinToString(separator = ",")}"
             val response = apiManager.doOkHttpGet(url + params).asObject()
 

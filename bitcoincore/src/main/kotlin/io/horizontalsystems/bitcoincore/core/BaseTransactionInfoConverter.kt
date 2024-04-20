@@ -1,8 +1,19 @@
 package io.horizontalsystems.bitcoincore.core
 
 import io.horizontalsystems.bitcoincore.extensions.toReversedHex
-import io.horizontalsystems.bitcoincore.models.*
+import io.horizontalsystems.bitcoincore.io.BitcoinInput
+import io.horizontalsystems.bitcoincore.models.InvalidTransaction
+import io.horizontalsystems.bitcoincore.models.Transaction
+import io.horizontalsystems.bitcoincore.models.TransactionInfo
+import io.horizontalsystems.bitcoincore.models.TransactionInputInfo
+import io.horizontalsystems.bitcoincore.models.TransactionMetadata
+import io.horizontalsystems.bitcoincore.models.TransactionOutput
+import io.horizontalsystems.bitcoincore.models.TransactionOutputInfo
+import io.horizontalsystems.bitcoincore.models.TransactionStatus
+import io.horizontalsystems.bitcoincore.models.rbfEnabled
 import io.horizontalsystems.bitcoincore.storage.FullTransactionInfo
+import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
+import java.io.ByteArrayInputStream
 
 class BaseTransactionInfoConverter(private val pluginManager: PluginManager) {
 
@@ -34,16 +45,19 @@ class BaseTransactionInfoConverter(private val pluginManager: PluginManager) {
 
         fullTransaction.outputs.forEach { output ->
             val outputInfo = TransactionOutputInfo(mine = output.publicKeyPath != null,
-                changeOutput = output.changeOutput,
-                value = output.value,
-                address = output.address,
-                pluginId = output.pluginId,
-                pluginDataString = output.pluginData,
-                unlockedHeight = output.unlockedHeight,
-                pluginData = pluginManager.parsePluginData(output, transaction.timestamp))
+                    changeOutput = output.changeOutput,
+                    value = output.value,
+                    address = output.address,
+                    memo = parseMemo(output),
+                    pluginId = output.pluginId,
+                    pluginDataString = output.pluginData,
+                    unlockedHeight = output.unlockedHeight,
+                    pluginData = pluginManager.parsePluginData(output, transaction.timestamp))
 
             outputsInfo.add(outputInfo)
         }
+
+        val rbfEnabled = fullTransaction.inputs.any { it.input.rbfEnabled }
 
         return TransactionInfo(
             uid = transaction.uid,
@@ -57,8 +71,23 @@ class BaseTransactionInfoConverter(private val pluginManager: PluginManager) {
             blockHeight = fullTransaction.block?.height,
             timestamp = transaction.timestamp,
             status = TransactionStatus.getByCode(transaction.status) ?: TransactionStatus.NEW,
-            conflictingTxHash = transaction.conflictingTxHash?.toReversedHex()
+            conflictingTxHash = transaction.conflictingTxHash?.toReversedHex(),
+            rbfEnabled = rbfEnabled
         )
+    }
+
+    private fun parseMemo(output: TransactionOutput): String? {
+        if (output.scriptType != ScriptType.NULL_DATA) return null
+        val payload = output.lockingScriptPayload ?: return null
+        if (payload.isEmpty()) return null
+
+        return try {
+            val input = BitcoinInput(ByteArrayInputStream(payload))
+            input.readByte() // op_return
+            input.readString()
+        } catch (e: Throwable) {
+            null
+        }
     }
 
     private fun getInvalidTransactionInfo(

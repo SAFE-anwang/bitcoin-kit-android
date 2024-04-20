@@ -31,7 +31,6 @@ import io.horizontalsystems.bitcoincore.storage.Storage
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import io.horizontalsystems.bitcoincore.utils.AddressConverterChain
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
-import io.horizontalsystems.bitcoincore.utils.CashAddressConverter
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.bitcoincore.utils.SegwitAddressConverter
 import io.horizontalsystems.hdwalletkit.HDExtendedKey
@@ -169,7 +168,8 @@ class LitecoinKit : AbstractKit {
         val storage = Storage(database)
         val checkpoint = Checkpoint.resolveCheckpoint(syncMode, network, storage)
         val apiSyncStateManager = ApiSyncStateManager(storage, network.syncableFromApi && syncMode !is SyncMode.Full)
-        val apiTransactionProvider = apiTransactionProvider(networkType, syncMode, apiSyncStateManager)
+        val blockchairApi = BlockchairApi(network.blockchairChainId)
+        val apiTransactionProvider = apiTransactionProvider(networkType, syncMode, apiSyncStateManager, blockchairApi)
         val paymentAddressParser = PaymentAddressParser("litecoin", removeScheme = true)
         val blockValidatorSet = blockValidatorSet(storage, networkType)
 
@@ -185,6 +185,7 @@ class LitecoinKit : AbstractKit {
             .setPaymentAddressParser(paymentAddressParser)
             .setPeerSize(peerSize)
             .setSyncMode(syncMode)
+            .setSendType(BitcoinCore.SendType.API(blockchairApi))
             .setConfirmationThreshold(confirmationsThreshold)
             .setStorage(storage)
             .setApiTransactionProvider(apiTransactionProvider)
@@ -263,13 +264,13 @@ class LitecoinKit : AbstractKit {
     private fun apiTransactionProvider(
         networkType: NetworkType,
         syncMode: SyncMode,
-        apiSyncStateManager: ApiSyncStateManager
+        apiSyncStateManager: ApiSyncStateManager,
+        blockchairApi: BlockchairApi
     ) = when (networkType) {
         NetworkType.MainNet -> {
             val bCoinApiProvider = BCoinApi("https://ltc.blocksdecoded.com/api")
 
             if (syncMode is SyncMode.Blockchair) {
-                val blockchairApi = BlockchairApi(syncMode.key, network.blockchairChainId)
                 val blockchairBlockHashFetcher = BlockchairBlockHashFetcher(blockchairApi)
                 val blockchairProvider = BlockchairTransactionProvider(blockchairApi, blockchairBlockHashFetcher)
 
@@ -304,7 +305,7 @@ class LitecoinKit : AbstractKit {
             "Litecoin-${networkType.name}-$walletId-${syncMode.javaClass.simpleName}-${purpose.name}"
 
         fun clear(context: Context, networkType: NetworkType, walletId: String) {
-            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair(""))) {
+            for (syncMode in listOf(SyncMode.Api(), SyncMode.Full(), SyncMode.Blockchair())) {
                 for (purpose in Purpose.values())
                     try {
                         SQLiteDatabase.deleteDatabase(context.getDatabasePath(getDatabaseName(networkType, walletId, syncMode, purpose)))

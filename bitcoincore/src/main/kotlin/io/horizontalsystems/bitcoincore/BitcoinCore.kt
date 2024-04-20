@@ -1,6 +1,7 @@
 package io.horizontalsystems.bitcoincore
 
 import io.horizontalsystems.bitcoincore.blocks.BlockSyncer
+import io.horizontalsystems.bitcoincore.apisync.blockchair.BlockchairApi
 import io.horizontalsystems.bitcoincore.blocks.IPeerSyncListener
 import io.horizontalsystems.bitcoincore.blocks.InitialBlockDownload
 import io.horizontalsystems.bitcoincore.core.DataProvider
@@ -23,6 +24,7 @@ import io.horizontalsystems.bitcoincore.managers.IUnspentOutputSelector
 import io.horizontalsystems.bitcoincore.managers.RestoreKeyConverterChain
 import io.horizontalsystems.bitcoincore.managers.SyncManager
 import io.horizontalsystems.bitcoincore.managers.UnspentOutputSelectorChain
+import io.horizontalsystems.bitcoincore.models.Address
 import io.horizontalsystems.bitcoincore.models.BalanceInfo
 import io.horizontalsystems.bitcoincore.models.BitcoinPaymentData
 import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
@@ -44,6 +46,10 @@ import io.horizontalsystems.bitcoincore.network.peer.InventoryItemsHandlerChain
 import io.horizontalsystems.bitcoincore.network.peer.PeerGroup
 import io.horizontalsystems.bitcoincore.network.peer.PeerManager
 import io.horizontalsystems.bitcoincore.network.peer.PeerTaskHandlerChain
+import io.horizontalsystems.bitcoincore.rbf.ReplacementTransaction
+import io.horizontalsystems.bitcoincore.rbf.ReplacementTransactionBuilder
+import io.horizontalsystems.bitcoincore.rbf.ReplacementTransactionInfo
+import io.horizontalsystems.bitcoincore.rbf.ReplacementType
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.storage.UnspentOutputInfo
@@ -70,6 +76,7 @@ class BitcoinCore(
     private val restoreKeyConverterChain: RestoreKeyConverterChain,
     private val transactionCreator: TransactionCreator?,
     private val transactionFeeCalculator: TransactionFeeCalculator?,
+    private val replacementTransactionBuilder: ReplacementTransactionBuilder?,
     private val paymentAddressParser: PaymentAddressParser,
     private val syncManager: SyncManager,
     private val purpose: Purpose,
@@ -209,6 +216,7 @@ class BitcoinCore(
     fun sendInfo(
         value: Long,
         address: String? = null,
+        memo: String?,
         senderPay: Boolean = true,
         feeRate: Int,
         unspentOutputs: List<UnspentOutputInfo>?,
@@ -224,12 +232,17 @@ class BitcoinCore(
             feeRate = feeRate,
             senderPay = senderPay,
             toAddress = address,
+            memo = memo,
             unspentOutputs = outputs,
             pluginData = pluginData
         ) ?: throw CoreError.ReadOnlyCore
     }
 
-    fun send(address: String, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>,
+    fun send(
+            address: String,
+            memo: String?,
+            value: Long,
+            senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType, pluginData: Map<Byte, IPluginData>,
              unspentOutputs: List<UnspentOutputInfo>?,
              rbfEnabled: Boolean,
              unlockedHeight: Long?,     // UPDATE FOR SAFE
@@ -240,7 +253,19 @@ class BitcoinCore(
                 unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
             }
         }
-        return transactionCreator?.create(address, value, feeRate, senderPay, sortType, outputs, pluginData, rbfEnabled, unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
+        return transactionCreator?.create(
+                toAddress = address,
+                memo = memo,
+                value = value,
+                feeRate = feeRate,
+                senderPay = senderPay,
+                sortType = sortType,
+                unspentOutputs = outputs,
+                pluginData = mapOf(),
+                rbfEnabled = rbfEnabled,
+                unlockedHeight,
+                reverseHex,
+        ) ?: throw CoreError.ReadOnlyCore
     }
 
     fun send(hash: ByteArray, scriptType: ScriptType, value: Long, senderPay: Boolean = true, feeRate: Int, sortType: TransactionDataSortType,
@@ -255,7 +280,7 @@ class BitcoinCore(
                 unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
             }
         }
-        return transactionCreator?.create(address.stringValue, value, feeRate, senderPay, sortType, outputs,
+        return transactionCreator?.create(address.stringValue, null, value, feeRate, senderPay, sortType, outputs,
                 mapOf(),
                 rbfEnabled,
                 unlockedHeight, reverseHex) ?: throw CoreError.ReadOnlyCore
@@ -263,6 +288,7 @@ class BitcoinCore(
 
     fun send(
         address: String,
+        memo: String?,
         value: Long,
         senderPay: Boolean = true,
         feeRate: Int,
@@ -278,6 +304,7 @@ class BitcoinCore(
         }
         return transactionCreator?.create(
             toAddress = address,
+            memo = memo,
             value = value,
             feeRate = feeRate,
             senderPay = senderPay,
@@ -292,6 +319,7 @@ class BitcoinCore(
 
     fun send(
         hash: ByteArray,
+        memo: String?,
         scriptType: ScriptType,
         value: Long,
         senderPay: Boolean = true,
@@ -308,6 +336,7 @@ class BitcoinCore(
         }
         return transactionCreator?.create(
             toAddress = address.stringValue,
+            memo = memo,
             value = value,
             feeRate = feeRate,
             senderPay = senderPay,
@@ -320,12 +349,16 @@ class BitcoinCore(
         ) ?: throw CoreError.ReadOnlyCore
     }
 
-    fun redeem(unspentOutput: UnspentOutput, address: String, feeRate: Int, sortType: TransactionDataSortType, rbfEnabled: Boolean): FullTransaction {
-        return transactionCreator?.create(unspentOutput, address, feeRate, sortType, rbfEnabled, null, null) ?: throw CoreError.ReadOnlyCore
+    fun redeem(unspentOutput: UnspentOutput, address: String, memo: String?, feeRate: Int, sortType: TransactionDataSortType, rbfEnabled: Boolean): FullTransaction {
+        return transactionCreator?.create(unspentOutput, address, memo, feeRate, sortType, rbfEnabled, null, null) ?: throw CoreError.ReadOnlyCore
     }
 
     fun receiveAddress(): String {
         return addressConverter.convert(publicKeyManager.receivePublicKey(), purpose.scriptType).stringValue
+    }
+
+    fun address(publicKey: PublicKey): Address {
+        return addressConverter.convert(publicKey, purpose.scriptType)
     }
 
     fun usedAddresses(change: Boolean): List<UsedAddress> {
@@ -460,6 +493,7 @@ class BitcoinCore(
 
     fun maximumSpendableValue(
         address: String?,
+        memo: String?,
         feeRate: Int,
         unspentOutputs: List<UnspentOutputInfo>?,
         pluginData: Map<Byte, IPluginData>
@@ -479,6 +513,7 @@ class BitcoinCore(
             feeRate = feeRate,
             senderPay = false,
             toAddress = address,
+            memo = memo,
             unspentOutputs = outputs,
             pluginData = pluginData
         ).fee
@@ -502,6 +537,25 @@ class BitcoinCore(
 
     fun getTransaction(hash: String): TransactionInfo? {
         return dataProvider.getTransaction(hash)
+    }
+
+    fun replacementTransaction(transactionHash: String, minFee: Long, type: ReplacementType): ReplacementTransaction {
+        val replacementTransactionBuilder = this.replacementTransactionBuilder ?: throw CoreError.ReadOnlyCore
+
+        val (mutableTransaction, fullInfo, descendantTransactionHashes) =
+            replacementTransactionBuilder.replacementTransaction(transactionHash, minFee, type)
+        val info = dataProvider.transactionInfo(fullInfo)
+        return ReplacementTransaction(mutableTransaction, info, descendantTransactionHashes)
+    }
+
+    fun send(replacementTransaction: ReplacementTransaction): FullTransaction {
+        val transactionCreator = this.transactionCreator ?: throw CoreError.ReadOnlyCore
+
+        return transactionCreator.create(replacementTransaction.mutableTransaction)
+    }
+
+    fun replacementTransactionInfo(transactionHash: String, type: ReplacementType): ReplacementTransactionInfo? {
+        return replacementTransactionBuilder?.replacementInfo(transactionHash, type)
     }
 
     sealed class KitState {
@@ -543,7 +597,7 @@ class BitcoinCore(
     sealed class SyncMode {
         class Full : SyncMode()
         class Api : SyncMode()
-        class Blockchair(val key: String) : SyncMode()
+        class Blockchair : SyncMode()
     }
 
     sealed class StateError : Exception() {
@@ -553,6 +607,11 @@ class BitcoinCore(
 
     sealed class CoreError : Exception() {
         object ReadOnlyCore : CoreError()
+    }
+
+    sealed class SendType {
+        object P2P: SendType()
+        class API(val blockchairApi: BlockchairApi): SendType()
     }
 
 }

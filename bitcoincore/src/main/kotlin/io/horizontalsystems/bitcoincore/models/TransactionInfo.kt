@@ -18,19 +18,26 @@ open class TransactionInfo {
     var timestamp: Long = 0
     var status: TransactionStatus = TransactionStatus.NEW
     var conflictingTxHash: String? = null
+    var rbfEnabled: Boolean = false
 
-    constructor(uid: String,
-                transactionHash: String,
-                transactionIndex: Int,
-                inputs: List<TransactionInputInfo>,
-                outputs: List<TransactionOutputInfo>,
-                amount: Long,
-                type: TransactionType,
-                fee: Long?,
-                blockHeight: Int?,
-                timestamp: Long,
-                status: TransactionStatus,
-                conflictingTxHash: String? = null) {
+    val replaceable: Boolean
+        get() = rbfEnabled && blockHeight == null && conflictingTxHash == null
+
+    constructor(
+        uid: String,
+        transactionHash: String,
+        transactionIndex: Int,
+        inputs: List<TransactionInputInfo>,
+        outputs: List<TransactionOutputInfo>,
+        amount: Long,
+        type: TransactionType,
+        fee: Long?,
+        blockHeight: Int?,
+        timestamp: Long,
+        status: TransactionStatus,
+        conflictingTxHash: String? = null,
+        rbfEnabled: Boolean = false
+    ) {
         this.uid = uid
         this.transactionHash = transactionHash
         this.transactionIndex = transactionIndex
@@ -43,6 +50,7 @@ open class TransactionInfo {
         this.timestamp = timestamp
         this.status = status
         this.conflictingTxHash = conflictingTxHash
+        this.rbfEnabled = rbfEnabled
     }
 
     @Throws
@@ -61,6 +69,7 @@ open class TransactionInfo {
         status = TransactionStatus.getByCode(jsonObject.get("status").asInt())
             ?: TransactionStatus.INVALID
         conflictingTxHash = jsonObject.get("conflictingTxHash")?.asString()
+        rbfEnabled = jsonObject.get("rbfEnabled")?.asBoolean() ?: false
     }
 
     private fun parseInputs(jsonArray: JsonArray): List<TransactionInputInfo> {
@@ -85,13 +94,14 @@ open class TransactionInfo {
         for (outputJsonValue in jsonArray) {
             outputJsonValue.asObject().let {
                 val output = TransactionOutputInfo(
-                    mine = it.get("mine").asBoolean(),
-                    changeOutput = it.get("changeOutput").asBoolean(),
-                    value = it.get("value").asLong(),
-                    address = if (it.get("address")?.isNull == false) it.get("address")?.asString() else null,
-                    pluginId = if (it.get("pluginId")?.isNull == false) it.get("pluginId")?.asString()?.toByte() else null,
-                    unlockedHeight = if (it.get("unlockedHeight")?.isNull == false) it.get("unlockedHeight")?.asString()?.toLong() else null,
-                    pluginDataString = if (it.get("pluginDataString")?.isNull == false) it.get("pluginDataString")?.asString() else null)
+                        mine = it.get("mine").asBoolean(),
+                        changeOutput = it.get("changeOutput").asBoolean(),
+                        value = it.get("value").asLong(),
+                        address = if (it.get("address")?.isNull == false) it.get("address")?.asString() else null,
+                        memo = if (it.get("memo")?.isNull == false) it.get("memo")?.asString() else null,
+                        pluginId = if (it.get("pluginId")?.isNull == false) it.get("pluginId")?.asString()?.toByte() else null,
+                        pluginDataString = if (it.get("pluginDataString")?.isNull == false) it.get("pluginDataString")?.asString() else null,
+                        unlockedHeight = if (it.get("unlockedHeight")?.isNull == false) it.get("unlockedHeight")?.asString()?.toLong() else null)
 
                 outputs.add(output)
             }
@@ -110,6 +120,7 @@ open class TransactionInfo {
             outputObj.add("pluginId", it.pluginId?.toString())
             outputObj.add("pluginDataString", it.pluginDataString)
             outputObj.add("unlockedHeight", it.unlockedHeight?.toString())
+            outputObj.add("memo", it.memo)
             jsonArray.add(outputObj)
         }
         return jsonArray
@@ -166,14 +177,17 @@ enum class TransactionStatus(val code: Int) {
 
 data class TransactionInputInfo(val mine: Boolean, val value: Long? = null, val address: String? = null)
 
-data class TransactionOutputInfo(val mine: Boolean,
-                                 val changeOutput: Boolean,
-                                 val value: Long,
-                                 val address: String? = null,
-                                 val pluginId: Byte? = null,
-                                 val pluginData: IPluginOutputData? = null,
-                                 val unlockedHeight: Long? = null,
-                                 internal val pluginDataString: String? = null)
+data class TransactionOutputInfo(
+    val mine: Boolean,
+    val changeOutput: Boolean,
+    val value: Long,
+    val address: String? = null,
+    val memo: String?,
+    val pluginId: Byte? = null,
+    val pluginData: IPluginOutputData? = null,
+    val unlockedHeight: Long? = null,
+    internal val pluginDataString: String? = null,
+)
 
 data class BlockInfo(
     val headerHash: String,
@@ -181,4 +195,4 @@ data class BlockInfo(
     val timestamp: Long
 )
 
-data class BalanceInfo(val spendable: Long, val unspendable: Long)
+data class BalanceInfo(val spendable: Long, val unspendableTimeLocked: Long, val unspendableNotRelayed: Long)

@@ -15,6 +15,7 @@ import io.horizontalsystems.bitcoincore.models.SentTransaction
 import io.horizontalsystems.bitcoincore.models.Transaction
 import io.horizontalsystems.bitcoincore.models.TransactionFilterType
 import io.horizontalsystems.bitcoincore.models.TransactionInput
+import io.horizontalsystems.bitcoincore.models.TransactionMetadata
 import io.horizontalsystems.bitcoincore.models.TransactionOutput
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import kotlin.math.max
@@ -289,6 +290,21 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
         return store.transaction.getByHash(hash)?.let { convertToFullTransaction(it) }
     }
 
+    override fun getFullTransactions(transactions: List<Transaction>): List<FullTransaction> {
+        val hashes = transactions.map { it.hash }
+        val inputsByTransaction = store.input.getTransactionInputs(hashes).groupBy { it.transactionHash.toHexString() }
+        val outputsByTransaction = store.output.getTransactionsOutputs(hashes).groupBy { it.transactionHash.toHexString() }
+        val metadataByTransaction = store.transactionMetadata.getTransactionMetadata(hashes).associateBy { it.transactionHash.toHexString() }
+
+        return transactions.map { transaction ->
+            val inputs = inputsByTransaction[transaction.hash.toHexString()] ?: listOf()
+            val outputs = outputsByTransaction[transaction.hash.toHexString()] ?: listOf()
+            FullTransaction(transaction, inputs, outputs, false).apply {
+                metadata = metadataByTransaction[transaction.hash.toHexString()] ?: TransactionMetadata(transaction.hash)
+            }
+        }
+    }
+
     override fun getValidOrInvalidTransaction(uid: String): Transaction? {
         return store.transaction.getValidOrInvalidByUid(uid)
     }
@@ -391,6 +407,34 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
         return store.transaction.getInvalidTransaction(hash)
     }
 
+    override fun getDescendantTransactionsFullInfo(txHash: ByteArray): List<FullTransactionInfo> {
+        val fullTransactionInfo = getFullTransactionInfo(txHash) ?: return listOf()
+        val list = mutableListOf(fullTransactionInfo)
+
+        val inputs = getTransactionInputsByPrevOutputTxHash(fullTransactionInfo.header.hash)
+
+        inputs.forEach { input ->
+            val descendantTxs = getDescendantTransactionsFullInfo(input.transactionHash)
+            list.addAll(descendantTxs)
+        }
+
+        return list
+    }
+
+    override fun getDescendantTransactions(txHash: ByteArray): List<Transaction> {
+        val transaction = getTransaction(txHash) ?: return listOf()
+        val list = mutableListOf(transaction)
+
+        val inputs = getTransactionInputsByPrevOutputTxHash(txHash)
+
+        inputs.forEach { input ->
+            val descendantTxs = getDescendantTransactions(input.transactionHash)
+            list.addAll(descendantTxs)
+        }
+
+        return list
+    }
+
     override fun moveTransactionToInvalidTransactions(invalidTransactions: List<InvalidTransaction>) {
         store.runInTransaction {
             invalidTransactions.forEach { invalidTransaction ->
@@ -399,7 +443,7 @@ open class Storage(protected open val store: CoreDatabase) : IStorage {
                 val inputs = store.input.getInputsWithPrevouts(listOf(invalidTransaction.hash))
                 inputs.forEach { input ->
                     input.previousOutput?.let {
-                        store.output.markFailedToSpend(it.outputTransactionHash, it.index)
+                        store.output.markFailedToSpend(it.transactionHash, it.index)
                     }
                 }
 

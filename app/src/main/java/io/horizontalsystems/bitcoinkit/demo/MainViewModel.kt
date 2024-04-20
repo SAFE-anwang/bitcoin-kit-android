@@ -7,7 +7,12 @@ import io.horizontalsystems.bitcoincore.BitcoinCore.KitState
 import io.horizontalsystems.bitcoincore.core.IPluginData
 import io.horizontalsystems.bitcoincore.exceptions.AddressFormatException
 import io.horizontalsystems.bitcoincore.managers.SendValueErrors
-import io.horizontalsystems.bitcoincore.models.*
+import io.horizontalsystems.bitcoincore.models.BalanceInfo
+import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
+import io.horizontalsystems.bitcoincore.models.BlockInfo
+import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
+import io.horizontalsystems.bitcoincore.models.TransactionFilterType
+import io.horizontalsystems.bitcoincore.models.TransactionInfo
 import io.horizontalsystems.bitcoinkit.BitcoinKit
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.dashkit.DashKit
@@ -186,6 +191,7 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
                 try {
                     val transaction = safeKit.sendSafe(
                         address!!,
+                        null,
                         amount!!,
                         feeRate = feePriority.feeRate,
                         sortType = TransactionDataSortType.Shuffle,
@@ -212,7 +218,7 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
 
     fun onMaxClick() {
         try {
-            amountLiveData.value = safeKit.maximumSpendableValue(address, feePriority.feeRate, getPluginData())
+            amountLiveData.value = safeKit.maximumSpendableValue(address, null, feePriority.feeRate, null, getPluginData())
         } catch (e: Exception) {
             amountLiveData.value = 0
             errorLiveData.value = when (e) {
@@ -235,8 +241,8 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
         }
     }
 
-    private fun fee(value: Long, address: String? = null): Long {
-        return safeKit.sendInfo(value, address, feeRate = feePriority.feeRate, unspentOutputs = null, pluginData = getPluginData())
+    private fun fee(value: Long, address: String? = null): BitcoinSendInfo {
+        return safeKit.sendInfo(value, address, null, feeRate = feePriority.feeRate, unspentOutputs = null, pluginData = getPluginData())
     }
 
     private fun getPluginData(): MutableMap<Byte, IPluginData> {
