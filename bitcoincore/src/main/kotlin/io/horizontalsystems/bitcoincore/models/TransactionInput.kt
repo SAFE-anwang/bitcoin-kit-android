@@ -37,7 +37,7 @@ class TransactionInput(
     val previousOutputTxHash: ByteArray,
     val previousOutputIndex: Long,
     var sigScript: ByteArray = byteArrayOf(),
-    var sequence: Long
+    var sequence: Long = 0xffffffff
 ) {
 
     var transactionHash = byteArrayOf()

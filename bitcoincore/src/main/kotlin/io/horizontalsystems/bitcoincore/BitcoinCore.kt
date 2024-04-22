@@ -482,8 +482,12 @@ class BitcoinCore(
     // IKitStateManagerListener implementations
     //
     override fun onKitStateUpdate(state: KitState) {
-        listenerExecutor.execute {
-            listener?.onKitStateUpdate(state)
+        try {
+            listenerExecutor.execute {
+                listener?.onKitStateUpdate(state)
+            }
+        } catch(e: Exception) {
+
         }
     }
 

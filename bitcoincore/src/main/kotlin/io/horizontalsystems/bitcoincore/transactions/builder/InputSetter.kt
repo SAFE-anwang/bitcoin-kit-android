@@ -126,9 +126,9 @@ class InputSetter(
     private fun inputToSign(unspentOutput: UnspentOutput, rbfEnabled: Boolean): InputToSign {
         val previousOutput = unspentOutput.output
         val sequence = if (rbfEnabled) {
-            0x00
+            0xffffffff
         } else {
-            0xfffffffe
+            0xffffffff
         }
         val transactionInput = TransactionInput(previousOutput.transactionHash, previousOutput.index.toLong(), sequence = sequence)
 

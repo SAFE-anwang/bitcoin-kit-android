@@ -148,7 +148,7 @@ class DogecoinKit : AbstractKit {
                 .setPaymentAddressParser(paymentAddressParser)
                 .setPeerSize(peerSize)
                 .setSyncMode(syncMode)
-                .setSendType(BitcoinCore.SendType.API(blockchairApi))
+                .setSendType(BitcoinCore.SendType.P2P)
                 .setConfirmationThreshold(confirmationsThreshold)
                 .setStorage(storage)
                 .setApiTransactionProvider(apiTransactionProvider)
@@ -188,7 +188,7 @@ class DogecoinKit : AbstractKit {
             blockchairApi: BlockchairApi
     ) = when (networkType) {
         NetworkType.MainNet -> {
-            val bCoinApiProvider = BCoinApi("https://ltc.blocksdecoded.com/api")
+            val bCoinApiProvider = BCoinApi("")
 
             if (syncMode is SyncMode.Blockchair) {
                 val blockchairBlockHashFetcher = BlockchairBlockHashFetcher(blockchairApi)
