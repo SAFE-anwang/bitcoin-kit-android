@@ -265,7 +265,10 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
     }
 
     override fun onKitStateUpdate(state: BitcoinCore.KitState) {
-        listener?.onKitStateUpdate(state)
+        try {
+            listener?.onKitStateUpdate(state)
+        } catch (e: Exception) {
+        }
     }
 
     // IInstantTransactionDelegate
