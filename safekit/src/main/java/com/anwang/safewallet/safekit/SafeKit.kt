@@ -97,9 +97,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             networkType: NetworkType = defaultNetworkType,
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
-            confirmationsThreshold: Int = defaultConfirmationsThreshold,
-            connectionManager: ConnectionManager
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, connectionManager)
+            confirmationsThreshold: Int = defaultConfirmationsThreshold
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
         context: Context,
@@ -108,9 +107,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        connectionManager: ConnectionManager
-    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold, connectionManager)
+        confirmationsThreshold: Int = defaultConfirmationsThreshold
+    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
 
     constructor(
             context: Context,
@@ -119,8 +117,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             networkType: NetworkType = defaultNetworkType,
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
-            confirmationsThreshold: Int = defaultConfirmationsThreshold,
-            connectionManager: ConnectionManager
+            confirmationsThreshold: Int = defaultConfirmationsThreshold
     ) {
         val coreDatabase = CoreDatabase.getInstance(context, getDatabaseNameCore(networkType, walletId, syncMode))
         val dashDatabase = DashKitDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
