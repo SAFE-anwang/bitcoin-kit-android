@@ -20,7 +20,7 @@ import io.reactivex.Single
 
 abstract class AbstractKit {
 
-    protected abstract var bitcoinCore: BitcoinCore
+    abstract var bitcoinCore: BitcoinCore
     protected abstract var network: Network
 
     val unspentOutputs

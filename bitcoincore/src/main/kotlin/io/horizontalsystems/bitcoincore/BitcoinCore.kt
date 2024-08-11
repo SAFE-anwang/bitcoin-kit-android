@@ -72,7 +72,7 @@ class BitcoinCore(
     val storage: IStorage,
     private val dataProvider: DataProvider,
     private val publicKeyManager: IPublicKeyManager,
-    private val addressConverter: AddressConverterChain,
+    val addressConverter: AddressConverterChain,
     private val restoreKeyConverterChain: RestoreKeyConverterChain,
     private val transactionCreator: TransactionCreator?,
     private val transactionFeeCalculator: TransactionFeeCalculator?,
