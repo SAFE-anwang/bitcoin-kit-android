@@ -1,11 +1,13 @@
 package io.horizontalsystems.bitcoincore.transactions.builder
 
 import io.horizontalsystems.bitcoincore.core.IPrivateWallet
+import io.horizontalsystems.bitcoincore.models.PublicKey
 import io.horizontalsystems.bitcoincore.models.Transaction
 import io.horizontalsystems.bitcoincore.models.TransactionOutput
 import io.horizontalsystems.bitcoincore.serializers.TransactionSerializer
 import io.horizontalsystems.bitcoincore.storage.InputToSign
 import io.horizontalsystems.hdwalletkit.Utils
+import java.math.BigInteger
 
 class SchnorrInputSigner(
     private val hdWallet: IPrivateWallet
@@ -27,6 +29,10 @@ class SchnorrInputSigner(
         val signature = tweakedPrivateKey.signSchnorr(signatureHash)
 
         return listOf(signature)
+    }
+
+    fun getPrivateKey(publicKey: PublicKey): BigInteger {
+        return hdWallet.privateKey(publicKey.account, publicKey.index, publicKey.external).privKey
     }
 
     open class Error : Exception() {

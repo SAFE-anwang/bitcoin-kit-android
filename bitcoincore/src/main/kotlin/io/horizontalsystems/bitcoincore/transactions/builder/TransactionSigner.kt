@@ -1,7 +1,9 @@
 package io.horizontalsystems.bitcoincore.transactions.builder
 
+import io.horizontalsystems.bitcoincore.models.PublicKey
 import io.horizontalsystems.bitcoincore.transactions.scripts.OpCodes
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
+import java.math.BigInteger
 
 class TransactionSigner(
     private val ecdsaInputSigner: EcdsaInputSigner,
@@ -85,6 +87,10 @@ class TransactionSigner(
 
     private fun signatureScript(params: List<ByteArray>): ByteArray {
         return params.fold(byteArrayOf()) { acc, bytes -> acc + OpCodes.push(bytes) }
+    }
+
+    fun getPrivateKey(publicKey: PublicKey): BigInteger {
+        return ecdsaInputSigner.getPrivateKey(publicKey)
     }
 }
 

@@ -63,6 +63,7 @@ import io.horizontalsystems.bitcoincore.utils.IAddressConverter
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.reactivex.Single
+import java.math.BigInteger
 import java.util.Date
 import java.util.concurrent.Executor
 import kotlin.math.max
@@ -70,7 +71,7 @@ import kotlin.math.roundToInt
 
 class BitcoinCore(
     val storage: IStorage,
-    private val dataProvider: DataProvider,
+    val dataProvider: DataProvider,
     private val publicKeyManager: IPublicKeyManager,
     val addressConverter: AddressConverterChain,
     private val restoreKeyConverterChain: RestoreKeyConverterChain,
@@ -560,6 +561,10 @@ class BitcoinCore(
 
     fun replacementTransactionInfo(transactionHash: String, type: ReplacementType): ReplacementTransactionInfo? {
         return replacementTransactionBuilder?.replacementInfo(transactionHash, type)
+    }
+
+    fun getPrivateKey(publicKey: PublicKey): BigInteger? {
+        return transactionCreator?.getPrivateKey(publicKey)
     }
 
     sealed class KitState {

@@ -1,12 +1,14 @@
 package io.horizontalsystems.bitcoincore.transactions.builder
 
 import io.horizontalsystems.bitcoincore.core.IPrivateWallet
+import io.horizontalsystems.bitcoincore.models.PublicKey
 import io.horizontalsystems.bitcoincore.models.Transaction
 import io.horizontalsystems.bitcoincore.models.TransactionOutput
 import io.horizontalsystems.bitcoincore.network.Network
 import io.horizontalsystems.bitcoincore.serializers.TransactionSerializer
 import io.horizontalsystems.bitcoincore.storage.InputToSign
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
+import java.math.BigInteger
 
 class EcdsaInputSigner(
     private val hdWallet: IPrivateWallet,
@@ -36,6 +38,10 @@ class EcdsaInputSigner(
             ScriptType.P2PK -> listOf(signature)
             else -> listOf(signature, publicKey.publicKey)
         }
+    }
+
+    fun getPrivateKey(publicKey: PublicKey): BigInteger {
+        return hdWallet.privateKey(publicKey.account, publicKey.index, publicKey.external).privKey
     }
 
     open class Error : Exception() {

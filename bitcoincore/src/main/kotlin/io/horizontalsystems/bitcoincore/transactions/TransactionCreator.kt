@@ -2,12 +2,14 @@ package io.horizontalsystems.bitcoincore.transactions
 
 import io.horizontalsystems.bitcoincore.core.IPluginData
 import io.horizontalsystems.bitcoincore.managers.BloomFilterManager
+import io.horizontalsystems.bitcoincore.models.PublicKey
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.transactions.builder.MutableTransaction
 import io.horizontalsystems.bitcoincore.transactions.builder.TransactionBuilder
 import io.horizontalsystems.bitcoincore.transactions.builder.TransactionSigner
+import java.math.BigInteger
 
 class TransactionCreator(
     private val builder: TransactionBuilder,
@@ -89,6 +91,10 @@ class TransactionCreator(
         }
 
         return transaction
+    }
+
+    fun getPrivateKey(publicKey: PublicKey): BigInteger {
+        return transactionSigner.getPrivateKey(publicKey)
     }
 
     open class TransactionCreationException(msg: String) : Exception(msg)

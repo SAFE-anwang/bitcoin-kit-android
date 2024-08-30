@@ -134,6 +134,8 @@ class DataProvider(
 
     fun getSpendableUtxo() = unspentOutputProvider.getSpendableUtxo()
 
+    fun getSpendableTimeLockUtxo() = unspentOutputProvider.getUnspendableTimeLockedUtxo()
+
     fun transactionInfo(fullInfo: FullTransactionInfo): TransactionInfo {
         return transactionInfoConverter.transactionInfo(fullInfo)
     }
