@@ -1,6 +1,5 @@
 package io.horizontalsystems.bitcoincore.managers
 
-import android.util.Log
 import io.horizontalsystems.bitcoincore.core.IStorage
 import io.horizontalsystems.bitcoincore.core.PluginManager
 import io.horizontalsystems.bitcoincore.extensions.toHexString
@@ -44,8 +43,6 @@ class UnspentOutputProvider(
         val spendable = getSpendableUtxo().sumOf { it.output.value }
         val unspendableTimeLocked = getUnspendableTimeLockedUtxo().sumOf { it.output.value }
         val unspendableNotRelayed = getUnspendableNotRelayedUtxo().sumOf { it.output.value }
-        Log.e("Redeem", "${getSpendableUtxo().size}, $spendable, $unspendableTimeLocked, $unspendableNotRelayed")
-
         return BalanceInfo(spendable, unspendableTimeLocked, unspendableNotRelayed)
     }
 
