@@ -146,6 +146,7 @@ class BitcoinCoreBuilder {
     private var handleAddrMessage = true
     private var sendType: BitcoinCore.SendType = BitcoinCore.SendType.P2P
     private var connectionManager:ConnectionManager? = null
+    private var isAnBaoWallet = false
 
     fun setContext(context: Context): BitcoinCoreBuilder {
         this.context = context
@@ -251,6 +252,11 @@ class BitcoinCoreBuilder {
         return this
     }
 
+    fun setIsAnBaoWallet(isAnBaoWallet: Boolean): BitcoinCoreBuilder {
+        this.isAnBaoWallet = isAnBaoWallet
+        return this
+    }
+
     fun build(): BitcoinCore {
         val context = checkNotNull(this.context)
         val extendedKey = this.extendedKey
@@ -297,7 +303,7 @@ class BitcoinCoreBuilder {
             if (!extendedKey.isPublic) {
                 when (extendedKey.derivedType) {
                     HDExtendedKey.DerivedType.Master -> {
-                        val wallet = Wallet(HDWallet(extendedKey.key, network.coinType, purpose), gapLimit)
+                        val wallet = Wallet(HDWalletDelegate(extendedKey.key, network.coinType, purpose, anBaoCoinType = network.coinTypeAnBao), gapLimit)
                         privateWallet = wallet
                         val fetcher = MultiAccountPublicKeyFetcher(wallet)
                         publicKeyFetcher = fetcher

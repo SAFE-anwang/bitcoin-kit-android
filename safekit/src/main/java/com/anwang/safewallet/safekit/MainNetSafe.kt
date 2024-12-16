@@ -30,6 +30,7 @@ class MainNetSafe() : Network() {
     override var addressSegwitHrp: String = "bc"
     override var addressScriptVersion: Int = 16
     override var coinType: Int = 5
+    override var coinTypeAnBao: Int = 1
     override val blockchairChainId: String = "safe-coin"
 
     override val maxBlockSize = 1_000_000

@@ -25,6 +25,7 @@ abstract class Network {
     abstract var bip32HeaderPub: Int
     abstract var bip32HeaderPriv: Int
     abstract var coinType: Int
+    open var coinTypeAnBao: Int = -1
     abstract var dnsSeeds: List<String>
     abstract var addressVersion: Int
     abstract var addressSegwitHrp: String
