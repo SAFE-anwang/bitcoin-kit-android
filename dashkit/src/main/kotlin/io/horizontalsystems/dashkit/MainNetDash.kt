@@ -16,6 +16,7 @@ class MainNetDash : Network() {
     override var addressSegwitHrp: String = "bc"
     override var addressScriptVersion: Int = 16
     override var coinType: Int = 5
+    override var coinTypeAnBao: Int = 5
     override val blockchairChainId: String = "dash"
 
     override val maxBlockSize = 1_000_000

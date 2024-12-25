@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore
 
+import io.horizontalsystems.bitcoincore.extensions.toHexString
 import io.horizontalsystems.hdwalletkit.Curve
 import io.horizontalsystems.hdwalletkit.HDKey
 import io.horizontalsystems.hdwalletkit.HDKeychain
@@ -10,6 +11,7 @@ class HDWalletDelegate(
 	private val hdKeychain: HDKeychain,
 	private val coinType: Int,
 	purpose: HDWallet.Purpose,
+	private val isBaoCoinWallet: Boolean,
 	private val anBaoCoinType: Int = -1
 ) {
 
@@ -17,20 +19,22 @@ class HDWalletDelegate(
 			seed: ByteArray,
 			coinType: Int,
 			purpose: HDWallet.Purpose,
+			isBaoCoinWallet: Boolean,
 			curve: Curve = Curve.Secp256K1,
 			anBaoCoinType: Int = -1
 	) : this(
-			HDKeychain(seed, curve), coinType, purpose, anBaoCoinType
+			HDKeychain(seed, curve), coinType, purpose, isBaoCoinWallet, anBaoCoinType
 	)
 
 	constructor(
 			masterKey: HDKey,
 			coinType: Int,
 			purpose: HDWallet.Purpose,
+			isBaoCoinWallet: Boolean,
 			curve: Curve = Curve.Secp256K1,
 			anBaoCoinType: Int = -1
 	) : this(
-			HDKeychain(masterKey, curve), coinType, purpose, anBaoCoinType
+			HDKeychain(masterKey, curve), coinType, purpose, isBaoCoinWallet, anBaoCoinType
 	)
 
 	private val hdWallet = HDWallet(hdKeychain, coinType, purpose)
@@ -51,7 +55,7 @@ class HDWalletDelegate(
 	// private var coinType: Int = 0
 
 	fun hdPublicKey(account: Int, index: Int, external: Boolean): HDPublicKey {
-		return if (anBaoCoinType != -1) {
+		return if (isBaoCoinWallet && anBaoCoinType != -1) {
 			HDPublicKey(privateKeyAnBao(account = account, index = index, chain = if (external) 0 else 1))
 		} else {
 			HDPublicKey(privateKey(account = account, index = index, chain = if (external) 0 else 1))
@@ -59,7 +63,7 @@ class HDWalletDelegate(
 	}
 
 	fun hdPublicKeys(account: Int, indices: IntRange, external: Boolean): List<HDPublicKey> {
-		val parentPrivateKey = if (anBaoCoinType != -1) {
+		val parentPrivateKey = if (isBaoCoinWallet && anBaoCoinType != -1) {
 			privateKey("m/$purpose'/0'/0'/$anBaoCoinType")
 		} else {
 			privateKey("m/$purpose'/$coinType'/$account'/${if (external) 0 else 1}")
@@ -70,7 +74,7 @@ class HDWalletDelegate(
 	}
 
 	fun receiveHDPublicKey(account: Int, index: Int): HDPublicKey {
-		return if (anBaoCoinType != -1) {
+		return if (isBaoCoinWallet && anBaoCoinType != -1) {
 			HDPublicKey(privateKeyAnBao(account = account, index = index, chain = 0))
 		} else {
 			HDPublicKey(privateKey(account = account, index = index, chain = 0))
@@ -78,7 +82,7 @@ class HDWalletDelegate(
 	}
 
 	fun changeHDPublicKey(account: Int, index: Int): HDPublicKey {
-		return if (anBaoCoinType != -1) {
+		return if (isBaoCoinWallet && anBaoCoinType != -1) {
 			HDPublicKey(privateKeyAnBao(account = account, index = index, chain = 1))
 		} else {
 			HDPublicKey(privateKey(account = account, index = index, chain = 1))
@@ -93,14 +97,23 @@ class HDWalletDelegate(
 		return privateKey(path = "m/$purpose'/0'/0'/$anBaoCoinType/$index")
 	}
 
+	fun privateKeyAnBaoSign(account: Int, index: Int, chain: Int): HDKey {
+		return privateKey(path = "m/$purpose'/0'/0'/$anBaoCoinType/$index")
+	}
+
 	fun privateKey(account: Int): HDKey {
 		return privateKey(path = "m/$purpose'/$coinType'/$account'")
 	}
 
 	fun privateKey(account: Int, index: Int, external: Boolean): HDKey {
-		return privateKey(
-				account, index, if (external) HDWallet.Chain.EXTERNAL.ordinal else HDWallet.Chain.INTERNAL.ordinal
-		)
+		val chain = if (external) HDWallet.Chain.EXTERNAL.ordinal else HDWallet.Chain.INTERNAL.ordinal
+		return if (isBaoCoinWallet && anBaoCoinType != -1) {
+			privateKeyAnBao(account, index, chain)
+		} else {
+			privateKey(
+					account, index, chain
+			)
+		}
 	}
 
 	fun privateKey(path: String): HDKey {

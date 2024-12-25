@@ -30,8 +30,10 @@ import io.horizontalsystems.bitcoincore.storage.CoreDatabase
 import io.horizontalsystems.bitcoincore.storage.Storage
 import io.horizontalsystems.bitcoincore.transactions.TransactionSizeCalculator
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
+import io.horizontalsystems.bitcoincore.utils.IAddressConverter
 import io.horizontalsystems.bitcoincore.utils.MerkleBranch
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
+import io.horizontalsystems.bitcoincore.utils.SegwitAddressConverter
 import io.horizontalsystems.dashkit.core.DashTransactionInfoConverter
 import io.horizontalsystems.dashkit.core.SingleSha256Hasher
 import io.horizontalsystems.dashkit.instantsend.*
@@ -88,8 +90,9 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
 
     constructor(
         context: Context,
@@ -98,7 +101,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) : this(
         context = context,
         extendedKey = HDExtendedKey(seed, Purpose.BIP44),
@@ -106,7 +110,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType = networkType,
         peerSize = peerSize,
         syncMode = syncMode,
-        confirmationsThreshold = confirmationsThreshold
+        confirmationsThreshold = confirmationsThreshold,
+        isAnBaoWallet = isAnBaoWallet
     )
 
     constructor(
@@ -116,7 +121,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) : this(
         context = context,
         extendedKey = null,
@@ -125,7 +131,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType = networkType,
         peerSize = peerSize,
         syncMode = syncMode,
-        confirmationsThreshold = confirmationsThreshold
+        confirmationsThreshold = confirmationsThreshold,
+        isAnBaoWallet = isAnBaoWallet
     )
 
     constructor(
@@ -135,7 +142,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) : this(
         context = context,
         extendedKey = extendedKey,
@@ -144,7 +152,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType = networkType,
         peerSize = peerSize,
         syncMode = syncMode,
-        confirmationsThreshold = confirmationsThreshold
+        confirmationsThreshold = confirmationsThreshold,
+        isAnBaoWallet = isAnBaoWallet
     )
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -165,7 +174,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         networkType: NetworkType,
         peerSize: Int,
         syncMode: SyncMode,
-        confirmationsThreshold: Int
+        confirmationsThreshold: Int,
+        isAnBaoWallet: Boolean = false
     ) {
         val coreDatabase = CoreDatabase.getInstance(context, getDatabaseNameCore(networkType, walletId, syncMode))
         val dashDatabase = DashKitDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
@@ -205,7 +215,10 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             WatchAddressPublicKey(watchAddress.lockingScriptPayload, watchAddress.scriptType)
         }
 
-        bitcoinCore = BitcoinCoreBuilder()
+        val coreBuilder = BitcoinCoreBuilder()
+        val hodlerPlugin = hodlerPlugin(coreStorage, syncMode, coreBuilder.addressConverter)
+
+        bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
             .setWatchAddressPublicKey(watchAddressPublicKey)
@@ -222,6 +235,8 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             .setApiSyncStateManager(apiSyncStateManager)
             .setTransactionInfoConverter(dashTransactionInfoConverter)
             .setBlockValidator(blockValidatorSet)
+                .addPlugin(hodlerPlugin)
+                .setIsAnBaoWallet(isAnBaoWallet)
             .build()
 
         bitcoinCore.listener = this
@@ -257,7 +272,13 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         bitcoinCore.addPeerGroupListener(masternodeSyncer)
 
         val base58AddressConverter = Base58AddressConverter(network.addressVersion, network.addressScriptVersion)
+//        bitcoinCore.addRestoreKeyConverter(Bip44RestoreKeyConverter(base58AddressConverter))
+        val bech32AddressConverter = SegwitAddressConverter(network.addressSegwitHrp)
+
+        bitcoinCore.prependAddressConverter(bech32AddressConverter)
+
         bitcoinCore.addRestoreKeyConverter(Bip44RestoreKeyConverter(base58AddressConverter))
+        bitcoinCore.addRestoreKeyConverter(hodlerPlugin)
 
         val singleHasher = SingleSha256Hasher()
         val bls = BLS()
@@ -283,6 +304,15 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         val confirmedUnspentOutputProvider = ConfirmedUnspentOutputProvider(coreStorage, confirmationsThreshold)
         bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelector(calculator, dustCalculator, confirmedUnspentOutputProvider))
         bitcoinCore.prependUnspentOutputSelector(UnspentOutputSelectorSingleNoChange(calculator, dustCalculator, confirmedUnspentOutputProvider))
+    }
+
+    private fun hodlerPlugin(
+            storage: Storage,
+            syncMode: SyncMode,
+            addressConverter: IAddressConverter
+    ): HodlerPlugin {
+        val blockMedianTimeHelper = BlockMedianTimeHelper(storage, approximate = syncMode is SyncMode.Blockchair)
+        return HodlerPlugin(addressConverter, storage, blockMedianTimeHelper)
     }
 
     private fun apiTransactionProvider(

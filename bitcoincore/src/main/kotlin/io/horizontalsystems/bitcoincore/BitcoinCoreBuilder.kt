@@ -303,7 +303,7 @@ class BitcoinCoreBuilder {
             if (!extendedKey.isPublic) {
                 when (extendedKey.derivedType) {
                     HDExtendedKey.DerivedType.Master -> {
-                        val wallet = Wallet(HDWalletDelegate(extendedKey.key, network.coinType, purpose, anBaoCoinType = network.coinTypeAnBao), gapLimit)
+                        val wallet = Wallet(HDWalletDelegate(extendedKey.key, network.coinType, purpose, isAnBaoWallet, anBaoCoinType = network.coinTypeAnBao), gapLimit)
                         privateWallet = wallet
                         val fetcher = MultiAccountPublicKeyFetcher(wallet)
                         publicKeyFetcher = fetcher

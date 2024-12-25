@@ -190,10 +190,10 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setBlockValidator(blockValidatorSet)
                 .addPlugin(hodlerPlugin)
                 .setIsAnBaoWallet(isAnBaoWallet)
+                .addPlugin(hodlerPlugin)
+                .build()
 //                .setConnectionManager(connectionManager)
 //                .addPlugin(HodlerPlugin(coreBuilder.addressConverter, coreStorage, BlockMedianTimeHelper(coreStorage)))
-                .build()
-
         bitcoinCore.listener = this
 
         //  extending bitcoinCore
