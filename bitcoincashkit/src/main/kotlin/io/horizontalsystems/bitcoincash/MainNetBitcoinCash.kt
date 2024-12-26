@@ -15,6 +15,7 @@ class MainNetBitcoinCash(coinType: CoinType = CoinType.Type145) : Network() {
     override var addressSegwitHrp: String = "bitcoincash"
     override var addressScriptVersion: Int = 5
     override var coinType: Int = coinType.value
+    override var coinTypeAnBao: Int = 3
     override val blockchairChainId: String = "bitcoin-cash"
 
     override val maxBlockSize = 32 * 1024 * 1024

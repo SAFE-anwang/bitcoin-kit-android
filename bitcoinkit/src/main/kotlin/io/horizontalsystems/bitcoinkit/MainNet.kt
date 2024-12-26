@@ -16,6 +16,7 @@ class MainNet : Network() {
     override var addressSegwitHrp: String = "bc"
     override var addressScriptVersion: Int = 5
     override var coinType: Int = 0
+    override var coinTypeAnBao: Int = 0
     override val blockchairChainId: String = "bitcoin"
 
     override val maxBlockSize = 1_000_000

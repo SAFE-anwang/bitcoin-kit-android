@@ -37,6 +37,7 @@ import io.horizontalsystems.bitcoincore.utils.AddressConverterChain
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
 import io.horizontalsystems.bitcoincore.utils.CashAddressConverter
 import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
+import io.horizontalsystems.bitcoincore.utils.SegwitAddressConverter
 import io.horizontalsystems.hdwalletkit.HDExtendedKey
 import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
@@ -79,8 +80,9 @@ class BitcoinCashKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
 
     constructor(
         context: Context,
@@ -89,8 +91,9 @@ class BitcoinCashKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
-    ) : this(context, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
+    ) : this(context, HDExtendedKey(seed, Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -109,7 +112,8 @@ class BitcoinCashKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -122,7 +126,8 @@ class BitcoinCashKit : AbstractKit {
             walletId = walletId,
             syncMode = syncMode,
             peerSize = peerSize,
-            confirmationsThreshold = confirmationsThreshold
+            confirmationsThreshold = confirmationsThreshold,
+            isAnBaoWallet = isAnBaoWallet
         )
     }
 
@@ -143,7 +148,8 @@ class BitcoinCashKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -159,7 +165,8 @@ class BitcoinCashKit : AbstractKit {
             walletId = walletId,
             syncMode = syncMode,
             peerSize = peerSize,
-            confirmationsThreshold = confirmationsThreshold
+            confirmationsThreshold = confirmationsThreshold,
+            isAnBaoWallet = isAnBaoWallet
         )
     }
 
@@ -172,7 +179,8 @@ class BitcoinCashKit : AbstractKit {
         walletId: String,
         syncMode: SyncMode,
         peerSize: Int,
-        confirmationsThreshold: Int
+        confirmationsThreshold: Int,
+        isAnBaoWallet: Boolean = false
     ): BitcoinCore {
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
         val storage = Storage(database)
@@ -197,20 +205,31 @@ class BitcoinCashKit : AbstractKit {
             .setApiTransactionProvider(apiTransactionProvider)
             .setApiSyncStateManager(apiSyncStateManager)
             .setBlockValidator(blockValidatorSet)
+            .setIsAnBaoWallet(isAnBaoWallet)
             .build()
 
         //  extending bitcoinCore
+        if (isAnBaoWallet) {
+            val base58AddressConverter = Base58AddressConverter(network.addressVersion, network.addressScriptVersion)
 
-        val bech32 = CashAddressConverter(network.addressSegwitHrp)
-        bitcoinCore.prependAddressConverter(bech32)
+            //  extending bitcoinCore
+            val bech32AddressConverter = SegwitAddressConverter(network.addressSegwitHrp)
 
-        val restoreKeyConverter = if (syncMode is SyncMode.Blockchair) {
-            BlockchairCashRestoreKeyConverter(bech32)
+            bitcoinCore.prependAddressConverter(bech32AddressConverter)
+
+            bitcoinCore.addRestoreKeyConverter(Bip44RestoreKeyConverter(base58AddressConverter))
         } else {
-            val base58 = Base58AddressConverter(network.addressVersion, network.addressScriptVersion)
-            Bip44RestoreKeyConverter(base58)
+            val bech32 = CashAddressConverter(network.addressSegwitHrp)
+            bitcoinCore.prependAddressConverter(bech32)
+
+            val restoreKeyConverter = if (syncMode is SyncMode.Blockchair) {
+                BlockchairCashRestoreKeyConverter(bech32)
+            } else {
+                val base58 = Base58AddressConverter(network.addressVersion, network.addressScriptVersion)
+                Bip44RestoreKeyConverter(base58)
+            }
+            bitcoinCore.addRestoreKeyConverter(restoreKeyConverter)
         }
-        bitcoinCore.addRestoreKeyConverter(restoreKeyConverter)
 
         return bitcoinCore
     }

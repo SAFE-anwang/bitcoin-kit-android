@@ -66,8 +66,9 @@ class LitecoinKit : AbstractKit {
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        purpose: Purpose = Purpose.BIP44
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose)
+        purpose: Purpose = Purpose.BIP44,
+        isAnBaoWallet: Boolean = false
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose, isAnBaoWallet)
 
     constructor(
         context: Context,
@@ -77,8 +78,9 @@ class LitecoinKit : AbstractKit {
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        purpose: Purpose = Purpose.BIP44
-    ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold)
+        purpose: Purpose = Purpose.BIP44,
+        isAnBaoWallet: Boolean = false
+    ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -98,7 +100,8 @@ class LitecoinKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -111,7 +114,8 @@ class LitecoinKit : AbstractKit {
             syncMode = syncMode,
             purpose = purpose,
             peerSize = peerSize,
-            confirmationsThreshold = confirmationsThreshold
+            confirmationsThreshold = confirmationsThreshold,
+            isAnBaoWallet = isAnBaoWallet
         )
     }
 
@@ -132,7 +136,8 @@ class LitecoinKit : AbstractKit {
         networkType: NetworkType = defaultNetworkType,
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
-        confirmationsThreshold: Int = defaultConfirmationsThreshold
+        confirmationsThreshold: Int = defaultConfirmationsThreshold,
+        isAnBaoWallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -149,7 +154,8 @@ class LitecoinKit : AbstractKit {
             syncMode = syncMode,
             purpose = purpose,
             peerSize = peerSize,
-            confirmationsThreshold = confirmationsThreshold
+            confirmationsThreshold = confirmationsThreshold,
+            isAnBaoWallet = isAnBaoWallet
         )
     }
 
@@ -162,7 +168,8 @@ class LitecoinKit : AbstractKit {
         syncMode: SyncMode,
         purpose: Purpose,
         peerSize: Int,
-        confirmationsThreshold: Int
+        confirmationsThreshold: Int,
+        isAnBaoWallet: Boolean = false
     ): BitcoinCore {
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode, purpose))
         val storage = Storage(database)
@@ -174,7 +181,7 @@ class LitecoinKit : AbstractKit {
         val blockValidatorSet = blockValidatorSet(storage, networkType)
 
         val coreBuilder = BitcoinCoreBuilder()
-
+        val hodlerPlugin = HodlerPlugin(coreBuilder.addressConverter, storage, BlockMedianTimeHelper(storage))
         val bitcoinCore = coreBuilder
             .setContext(context)
             .setExtendedKey(extendedKey)
@@ -191,7 +198,8 @@ class LitecoinKit : AbstractKit {
             .setApiTransactionProvider(apiTransactionProvider)
             .setApiSyncStateManager(apiSyncStateManager)
             .setBlockValidator(blockValidatorSet)
-            .addPlugin(HodlerPlugin(coreBuilder.addressConverter, storage, BlockMedianTimeHelper(storage)))
+            .setIsAnBaoWallet(isAnBaoWallet)
+            .addPlugin(hodlerPlugin)
             .build()
 
         //  extending bitcoinCore
@@ -204,6 +212,7 @@ class LitecoinKit : AbstractKit {
         when (purpose) {
             Purpose.BIP44 -> {
                 bitcoinCore.addRestoreKeyConverter(Bip44RestoreKeyConverter(base58AddressConverter))
+                bitcoinCore.addRestoreKeyConverter(hodlerPlugin)
             }
 
             Purpose.BIP49 -> {

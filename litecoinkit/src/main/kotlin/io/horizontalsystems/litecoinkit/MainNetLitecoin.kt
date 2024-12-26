@@ -13,6 +13,7 @@ class MainNetLitecoin : Network() {
     override var addressSegwitHrp: String = "ltc"
     override var addressScriptVersion: Int = 0x32
     override var coinType: Int = 2
+    override var coinTypeAnBao: Int = 2
     override val blockchairChainId: String = "litecoin"
 
     override val maxBlockSize = 1_000_000
