@@ -120,4 +120,7 @@ class HDWalletDelegate(
 		return hdKeychain.getKeyByPath(path)
 	}
 
+	fun isAnBaoWallet(): Boolean {
+		return isBaoCoinWallet && anBaoCoinType != -1
+	}
 }

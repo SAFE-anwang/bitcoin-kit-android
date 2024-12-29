@@ -30,6 +30,10 @@ class Wallet(private val hdWallet: HDWalletDelegate, val gapLimit: Int): IPrivat
         return hdWallet.privateKey(account, index, external)
     }
 
+    fun isAnBaoWallet(): Boolean {
+        return hdWallet.isAnBaoWallet()
+    }
+
     open class HDWalletError : Exception() {
         class PublicKeysDerivationFailed : HDWalletError()
     }

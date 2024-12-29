@@ -16,7 +16,8 @@ class ApiSyncer(
     private val blockHashDiscovery: BlockHashDiscoveryBatch,
     private val publicKeyManager: IPublicKeyManager,
     private val multiAccountPublicKeyFetcher: IMultiAccountPublicKeyFetcher?,
-    private val apiSyncStateManager: ApiSyncStateManager
+    private val apiSyncStateManager: ApiSyncStateManager,
+    private val isAnBaoWallet: Boolean
 ) : IApiSyncer {
 
     override val willSync: Boolean
@@ -54,8 +55,12 @@ class ApiSyncer(
         if (multiAccountPublicKeyFetcher != null) {
             if (blockHashes.isNotEmpty()) {
                 storage.addBlockHashes(blockHashes)
-                multiAccountPublicKeyFetcher.increaseAccount()
-                sync()
+                if (isAnBaoWallet) {
+                    handleSuccess()
+                } else {
+                    multiAccountPublicKeyFetcher.increaseAccount()
+                    sync()
+                }
             } else {
                 handleSuccess()
             }

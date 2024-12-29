@@ -443,7 +443,8 @@ class BitcoinCoreBuilder {
                     blockDiscovery,
                     publicKeyManager,
                     multiAccountPublicKeyFetcher,
-                    apiSyncStateManager
+                    apiSyncStateManager,
+                        isAnBaoWallet
                 )
                 initialDownload = InitialBlockDownload(blockSyncer, peerManager, merkleBlockExtractor)
             }

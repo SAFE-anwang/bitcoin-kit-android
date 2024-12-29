@@ -188,7 +188,6 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setApiSyncStateManager(apiSyncStateManager)
                 .setTransactionInfoConverter(dashTransactionInfoConverter)
                 .setBlockValidator(blockValidatorSet)
-                .addPlugin(hodlerPlugin)
                 .setIsAnBaoWallet(isAnBaoWallet)
                 .addPlugin(hodlerPlugin)
                 .build()
