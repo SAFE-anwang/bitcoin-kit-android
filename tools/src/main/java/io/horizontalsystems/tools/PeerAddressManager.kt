@@ -6,7 +6,6 @@ import io.horizontalsystems.bitcoincore.models.PeerAddress
 import io.horizontalsystems.bitcoincore.network.Network
 import io.horizontalsystems.bitcoincore.network.peer.Peer
 import io.horizontalsystems.bitcoincore.network.peer.PeerDiscover
-import java.util.concurrent.CopyOnWriteArrayList
 
 class PeerAddressManager(private val network: Network) : IPeerAddressManager {
 
