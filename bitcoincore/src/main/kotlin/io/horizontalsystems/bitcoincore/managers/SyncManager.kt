@@ -19,7 +19,8 @@ class SyncManager(
     private val peerGroup: PeerGroup,
     private val storage: IStorage,
     private val syncMode: SyncMode,
-    bestBlockHeight: Int
+    bestBlockHeight: Int,
+    private val isSafe: Boolean
 ) : IApiSyncerListener, IConnectionManagerListener, IBlockSyncListener {
 
     var listener: IKitStateListener? = null
@@ -62,6 +63,14 @@ class SyncManager(
     }
 
     fun start() {
+        if (isSafe) {
+            // safe stop create block
+            if (initialBestBlockHeight >= 6663611) {
+                foundTransactionsCount = 0
+                syncState = KitState.Synced
+                return
+            }
+        }
         if (syncMode is SyncMode.Blockchair) {
             when (syncState) {
                 is KitState.ApiSyncing,

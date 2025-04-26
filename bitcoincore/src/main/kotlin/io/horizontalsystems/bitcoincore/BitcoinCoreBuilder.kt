@@ -450,7 +450,7 @@ class BitcoinCoreBuilder {
             }
         }
 
-        val syncManager = SyncManager(connectionManager, apiSyncer, peerGroup, storage, syncMode, blockSyncer.localDownloadedBestBlockHeight)
+        val syncManager = SyncManager(connectionManager, apiSyncer, peerGroup, storage, syncMode, blockSyncer.localDownloadedBestBlockHeight, network.isSafe())
         apiSyncer.listener = syncManager
         connectionManager.listener = syncManager
         blockSyncer.listener = syncManager

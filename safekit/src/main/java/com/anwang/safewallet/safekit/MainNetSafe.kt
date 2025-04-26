@@ -37,7 +37,9 @@ class MainNetSafe() : Network() {
     override val dustRelayTxFee = 1000 // https://github.com/dashpay/dash/blob/master/src/policy/policy.h#L36
 
     override var dnsSeeds = listOf(
-            "120.78.227.96",
+            "45.118.133.218",
+            "172.105.122.90",
+            "172.105.122.121",
             "114.215.31.37",
             "47.96.254.235",
             "106.14.66.206",
