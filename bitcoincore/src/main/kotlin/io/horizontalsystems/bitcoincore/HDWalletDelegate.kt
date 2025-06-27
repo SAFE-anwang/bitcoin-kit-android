@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore
 
+import android.util.Log
 import io.horizontalsystems.bitcoincore.extensions.toHexString
 import io.horizontalsystems.hdwalletkit.Curve
 import io.horizontalsystems.hdwalletkit.HDKey
@@ -12,7 +13,8 @@ class HDWalletDelegate(
 	private val coinType: Int,
 	purpose: HDWallet.Purpose,
 	private val isBaoCoinWallet: Boolean,
-	private val anBaoCoinType: Int = -1
+	private val isSafe3Wallet: Boolean = false,
+	private val anBaoCoinType: Int = -1,
 ) {
 
 	constructor(
@@ -20,10 +22,11 @@ class HDWalletDelegate(
 			coinType: Int,
 			purpose: HDWallet.Purpose,
 			isBaoCoinWallet: Boolean,
+			isSafe3Wallet: Boolean,
 			curve: Curve = Curve.Secp256K1,
 			anBaoCoinType: Int = -1
 	) : this(
-			HDKeychain(seed, curve), coinType, purpose, isBaoCoinWallet, anBaoCoinType
+			HDKeychain(seed, curve), coinType, purpose, isBaoCoinWallet, isSafe3Wallet, anBaoCoinType
 	)
 
 	constructor(
@@ -31,10 +34,11 @@ class HDWalletDelegate(
 			coinType: Int,
 			purpose: HDWallet.Purpose,
 			isBaoCoinWallet: Boolean,
+			isSafe3Wallet: Boolean,
 			curve: Curve = Curve.Secp256K1,
 			anBaoCoinType: Int = -1
 	) : this(
-			HDKeychain(masterKey, curve), coinType, purpose, isBaoCoinWallet, anBaoCoinType
+			HDKeychain(masterKey, curve), coinType, purpose, isBaoCoinWallet, isSafe3Wallet, anBaoCoinType
 	)
 
 	private val hdWallet = HDWallet(hdKeychain, coinType, purpose)
@@ -66,7 +70,11 @@ class HDWalletDelegate(
 		val parentPrivateKey = if (isBaoCoinWallet && anBaoCoinType != -1) {
 			privateKey("m/$purpose'/0'/0'/$anBaoCoinType")
 		} else {
-			privateKey("m/$purpose'/$coinType'/$account'/${if (external) 0 else 1}")
+			if (isSafe3Wallet) {
+				privateKey("m/0'/$account")
+			} else {
+				privateKey("m/$purpose'/$coinType'/$account'/${if (external) 0 else 1}")
+			}
 		}
 		return hdKeychain.deriveNonHardenedChildKeys(parentPrivateKey, indices).map {
 			HDPublicKey(it)

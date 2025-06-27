@@ -85,8 +85,9 @@ class BitcoinKit : AbstractKit {
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
         purpose: Purpose = Purpose.BIP44,
-        isAnBaoWallet: Boolean = false
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose, isAnBaoWallet)
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false,
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, purpose, isAnBaoWallet, isSafe3Wallet)
 
 
     /**
@@ -109,8 +110,9 @@ class BitcoinKit : AbstractKit {
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
         purpose: Purpose = Purpose.BIP44,
-        isAnBaoWallet: Boolean = false
-    ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false,
+    ) : this(context, HDExtendedKey(seed, purpose), purpose, walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet, isSafe3Wallet)
 
     /**
      * @constructor Creates and initializes the BitcoinKit
@@ -132,7 +134,8 @@ class BitcoinKit : AbstractKit {
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        isAnBaoWallet: Boolean = false
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -147,7 +150,8 @@ class BitcoinKit : AbstractKit {
             purpose = purpose,
             peerSize = peerSize,
             confirmationsThreshold = confirmationsThreshold,
-            isAnBaoWallet = isAnBaoWallet
+            isAnBaoWallet = isAnBaoWallet,
+            isSafe3Wallet = isSafe3Wallet,
         )
     }
 
@@ -170,7 +174,8 @@ class BitcoinKit : AbstractKit {
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        isAnBaoWallet: Boolean = false
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false
     ) {
         network = network(networkType)
 
@@ -189,7 +194,8 @@ class BitcoinKit : AbstractKit {
             syncMode = syncMode,
             peerSize = peerSize,
             confirmationsThreshold = confirmationsThreshold,
-            isAnBaoWallet = isAnBaoWallet
+            isAnBaoWallet = isAnBaoWallet,
+            isSafe3Wallet = isSafe3Wallet,
         )
     }
 
@@ -204,7 +210,8 @@ class BitcoinKit : AbstractKit {
         syncMode: SyncMode,
         peerSize: Int,
         confirmationsThreshold: Int,
-        isAnBaoWallet: Boolean = false
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false
     ): BitcoinCore {
         val database = CoreDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode, purpose))
         val storage = Storage(database)
@@ -236,6 +243,7 @@ class BitcoinKit : AbstractKit {
             .setHandleAddrMessage(false)
             .addPlugin(hodlerPlugin)
             .setIsAnBaoWallet(isAnBaoWallet)
+            .setIsSafe3Wallet(isSafe3Wallet)
             .build()
 
         //  extending bitcoinCore

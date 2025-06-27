@@ -102,8 +102,9 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
             confirmationsThreshold: Int = defaultConfirmationsThreshold,
-            isAnBaoWallet: Boolean = false
-    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
+            isAnBaoWallet: Boolean = false,
+            isSafe3Wallet: Boolean = false
+    ) : this(context, Mnemonic().toSeed(words, passphrase), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet, isSafe3Wallet)
 
     constructor(
         context: Context,
@@ -113,8 +114,9 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
         peerSize: Int = defaultPeerSize,
         syncMode: SyncMode = defaultSyncMode,
         confirmationsThreshold: Int = defaultConfirmationsThreshold,
-        isAnBaoWallet: Boolean = false
-    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet)
+        isAnBaoWallet: Boolean = false,
+        isSafe3Wallet: Boolean = false
+    ) : this(context, HDExtendedKey(seed, HDWallet.Purpose.BIP44), walletId, networkType, peerSize, syncMode, confirmationsThreshold, isAnBaoWallet, isSafe3Wallet)
 
     constructor(
             context: Context,
@@ -124,7 +126,8 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
             peerSize: Int = defaultPeerSize,
             syncMode: SyncMode = defaultSyncMode,
             confirmationsThreshold: Int = defaultConfirmationsThreshold,
-            isAnBaoWallet: Boolean = false
+            isAnBaoWallet: Boolean = false,
+            isSafe3Wallet: Boolean = false
     ) {
         val coreDatabase = CoreDatabase.getInstance(context, getDatabaseNameCore(networkType, walletId, syncMode))
         val dashDatabase = DashKitDatabase.getInstance(context, getDatabaseName(networkType, walletId, syncMode))
@@ -189,6 +192,7 @@ class SafeKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                 .setTransactionInfoConverter(dashTransactionInfoConverter)
                 .setBlockValidator(blockValidatorSet)
                 .setIsAnBaoWallet(isAnBaoWallet)
+                .setIsSafe3Wallet(isSafe3Wallet)
                 .addPlugin(hodlerPlugin)
                 .build()
 //                .setConnectionManager(connectionManager)
