@@ -17,7 +17,8 @@ class ApiSyncer(
     private val publicKeyManager: IPublicKeyManager,
     private val multiAccountPublicKeyFetcher: IMultiAccountPublicKeyFetcher?,
     private val apiSyncStateManager: ApiSyncStateManager,
-    private val isAnBaoWallet: Boolean
+    private val isAnBaoWallet: Boolean,
+    private val isSafe3Wallet: Boolean
 ) : IApiSyncer {
 
     override val willSync: Boolean
@@ -55,7 +56,7 @@ class ApiSyncer(
         if (multiAccountPublicKeyFetcher != null) {
             if (blockHashes.isNotEmpty()) {
                 storage.addBlockHashes(blockHashes)
-                if (isAnBaoWallet) {
+                if (isAnBaoWallet || isSafe3Wallet) {
                     handleSuccess()
                 } else {
                     multiAccountPublicKeyFetcher.increaseAccount()

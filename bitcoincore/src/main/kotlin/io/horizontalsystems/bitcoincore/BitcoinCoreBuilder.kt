@@ -450,7 +450,8 @@ class BitcoinCoreBuilder {
                     publicKeyManager,
                     multiAccountPublicKeyFetcher,
                     apiSyncStateManager,
-                        isAnBaoWallet
+                        isAnBaoWallet,
+                    isSafe3Wallet
                 )
                 initialDownload = InitialBlockDownload(blockSyncer, peerManager, merkleBlockExtractor)
             }
