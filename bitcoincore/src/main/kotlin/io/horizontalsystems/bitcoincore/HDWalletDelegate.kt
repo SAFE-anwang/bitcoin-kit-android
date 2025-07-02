@@ -121,6 +121,12 @@ class HDWalletDelegate(
 		val chain = if (external) HDWallet.Chain.EXTERNAL.ordinal else HDWallet.Chain.INTERNAL.ordinal
 		return if (isBaoCoinWallet && anBaoCoinType != -1) {
 			privateKeyAnBao(account, index, chain)
+		} else if (isSafe3Wallet) {
+			if (account <= 1) {
+				privateKey("m/0'/${if (external) 0 else 1}")
+			} else {
+				privateKey("m/0'/$account")
+			}
 		} else {
 			privateKey(
 					account, index, chain
