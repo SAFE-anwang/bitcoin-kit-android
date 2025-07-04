@@ -122,10 +122,10 @@ class HDWalletDelegate(
 		return if (isBaoCoinWallet && anBaoCoinType != -1) {
 			privateKeyAnBao(account, index, chain)
 		} else if (isSafe3Wallet) {
-			if (account <= 1) {
-				privateKey("m/0'/${if (external) 0 else 1}")
+			if (account == 0) {
+				privateKey("m/0'/${if (external) 0 else 1}/$index")
 			} else {
-				privateKey("m/0'/$account")
+				privateKey("m/0'/$account/$index")
 			}
 		} else {
 			privateKey(
