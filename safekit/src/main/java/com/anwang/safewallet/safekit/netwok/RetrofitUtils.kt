@@ -21,11 +21,15 @@ object RetrofitUtils {
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
 
         val headersInterceptor = Interceptor { chain ->
-            val requestBuilder = chain.request().newBuilder()
-            headers.forEach { (name, value) ->
-                requestBuilder.header(name, value)
+            try {
+                val requestBuilder = chain.request().newBuilder()
+                headers.forEach { (name, value) ->
+                    requestBuilder.header(name, value)
+                }
+                chain.proceed(requestBuilder.build())
+            } catch (e: Exception) {
+                chain.proceed(chain.request())
             }
-            chain.proceed(requestBuilder.build())
         }
         val httpBuilder = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
