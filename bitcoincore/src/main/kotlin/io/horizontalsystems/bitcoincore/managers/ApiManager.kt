@@ -1,5 +1,6 @@
 package io.horizontalsystems.bitcoincore.managers
 
+import android.annotation.SuppressLint
 import com.eclipsesource.json.Json
 import com.eclipsesource.json.JsonValue
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -13,8 +14,15 @@ import java.io.InputStream
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.SecureRandom
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 class ApiManager(private val host: String) {
     private val logger = Logger.getLogger("ApiManager")
@@ -68,14 +76,17 @@ class ApiManager(private val host: String) {
     fun doOkHttpGet(uri: String): JsonValue {
 
         val url = "$host/$uri"
+        logger.info("Fetching $url")
 
         try {
-            val httpClient: OkHttpClient = OkHttpClient.Builder()
+            val builder = OkHttpClient.Builder()
                 .apply {
                     connectTimeout(5000, TimeUnit.MILLISECONDS)
                     readTimeout(60000, TimeUnit.MILLISECONDS)
-                }.build()
+                }
 
+            setUnsafeSocketFactory(builder)
+            val httpClient: OkHttpClient = builder.build()
             httpClient.newCall(Request.Builder().url(url).build())
                     .execute()
                     .use { response ->
@@ -93,13 +104,49 @@ class ApiManager(private val host: String) {
                     }
                 }
         } catch (e: ApiManagerException) {
+            logger.info("Fetching error $e")
             throw e
         }
         catch (e: Exception) {
+            logger.info("Fetching error2 $e")
             throw ApiManagerException.Other("${e.javaClass.simpleName}: $host, ${e.localizedMessage}")
         }
     }
 
+
+    @SuppressLint("TrustAllX509TrustManager", "BadHostnameVerifier")
+    private fun setUnsafeSocketFactory(builder: OkHttpClient.Builder) {
+        try {
+            val trustAllCerts = arrayOf<TrustManager>(
+                object : X509TrustManager {
+                    @Throws(CertificateException::class)
+                    override fun checkClientTrusted(
+                        chain: Array<X509Certificate>,
+                        authType: String
+                    ) {
+                    }
+
+                    @Throws(CertificateException::class)
+                    override fun checkServerTrusted(
+                        chain: Array<X509Certificate>,
+                        authType: String
+                    ) {
+                    }
+
+                    override fun getAcceptedIssuers(): Array<X509Certificate> {
+                        return arrayOf()
+                    }
+                }
+            )
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, SecureRandom())
+            val sslSocketFactory = sslContext.socketFactory
+            builder.sslSocketFactory(sslSocketFactory, (trustAllCerts[0] as X509TrustManager))
+            builder.hostnameVerifier(HostnameVerifier { _, _ -> true })
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+    }
 }
 
 sealed class ApiManagerException : Exception() {
