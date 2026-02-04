@@ -25,7 +25,7 @@ class SafeProvider(baseUrl: String) {
         @GET("v1/gate/{netType}")
         fun getSafeInfo(@Path("netType")netType: String): Single<SafeInfo>
 
-        @GET("v1/gate/{netType}")
+        @GET("v1/gate/{netType}/usdt")
         fun getSafeUsdtInfo(@Path("netType")netType: String): Single<SafeUsdtInfo>
     }
 }
