@@ -1,6 +1,18 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.parcelize)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
 
 android {
     compileSdkVersion 34
@@ -19,9 +31,6 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

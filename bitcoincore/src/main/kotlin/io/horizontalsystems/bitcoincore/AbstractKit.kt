@@ -15,6 +15,7 @@ import io.horizontalsystems.bitcoincore.rbf.ReplacementType
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.storage.UnspentOutputInfo
+import io.horizontalsystems.bitcoincore.storage.UtxoFilters
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 import io.reactivex.Single
 
@@ -23,8 +24,9 @@ abstract class AbstractKit {
     abstract var bitcoinCore: BitcoinCore
     protected abstract var network: Network
 
-    val unspentOutputs
-        get() = bitcoinCore.unspentOutputs
+    fun getUnspentOutputs(filters: UtxoFilters): List<UnspentOutputInfo> {
+        return bitcoinCore.getUnspentOutputs(filters)
+    }
 
     val balance
         get() = bitcoinCore.balance
@@ -75,7 +77,9 @@ abstract class AbstractKit {
         senderPay: Boolean = true,
         feeRate: Int,
         unspentOutputs: List<UnspentOutputInfo>?,
-        pluginData: Map<Byte, IPluginData> = mapOf()
+        pluginData: Map<Byte, IPluginData> = mapOf(),
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters
     ): BitcoinSendInfo {
         return bitcoinCore.sendInfo(
             value = value,
@@ -84,7 +88,9 @@ abstract class AbstractKit {
             senderPay = senderPay,
             feeRate = feeRate,
             unspentOutputs = unspentOutputs,
-            pluginData = pluginData
+            pluginData = pluginData,
+            changeToFirstInput = changeToFirstInput,
+            filters = filters,
         )
     }
 
@@ -98,8 +104,22 @@ abstract class AbstractKit {
         unspentOutputs: List<UnspentOutputInfo>? = null,
         pluginData: Map<Byte, IPluginData> = mapOf(),
         rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
     ): FullTransaction {
-        return bitcoinCore.send(address, memo, value, senderPay, feeRate, sortType, unspentOutputs, pluginData, rbfEnabled)
+        return bitcoinCore.send(
+            address,
+            memo,
+            value,
+            senderPay,
+            feeRate,
+            sortType,
+            unspentOutputs,
+            pluginData,
+            rbfEnabled,
+            changeToFirstInput,
+            filters,
+        )
     }
 
     fun sendSafe(address: String,
@@ -111,11 +131,26 @@ abstract class AbstractKit {
                  unspentOutputs: List<UnspentOutputInfo>? = null,
                  pluginData: Map<Byte, IPluginData> = mapOf(),
                  rbfEnabled: Boolean,
+                 changeToFirstInput: Boolean,
+                 filters: UtxoFilters,
                  unlockedHeight: Long ?,
                  reverseHex: String ?
     ) : FullTransaction {
         val unlockedHeight = unlockedHeight ?: 0;
-        return bitcoinCore.send(address, memo, value, senderPay, feeRate, sortType, pluginData, unspentOutputs, rbfEnabled, unlockedHeight, reverseHex)
+        return bitcoinCore.send(
+            address,
+            memo,
+            value,
+            senderPay,
+            feeRate,
+            sortType,
+            pluginData,
+            unspentOutputs,
+            rbfEnabled,
+            changeToFirstInput,
+            filters,
+            unlockedHeight,
+            reverseHex)
     }
 
     fun send(
@@ -127,8 +162,22 @@ abstract class AbstractKit {
         sortType: TransactionDataSortType,
         pluginData: Map<Byte, IPluginData> = mapOf(),
         rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
     ): FullTransaction {
-        return bitcoinCore.send(address, memo, value, senderPay, feeRate, sortType, null, pluginData, rbfEnabled)
+        return bitcoinCore.send(
+            address,
+            memo,
+            value,
+            senderPay,
+            feeRate,
+            sortType,
+            null,
+            pluginData,
+            rbfEnabled,
+            changeToFirstInput,
+            filters,
+        )
     }
 
     fun send(
@@ -141,8 +190,22 @@ abstract class AbstractKit {
         sortType: TransactionDataSortType,
         unspentOutputs: List<UnspentOutputInfo>? = null,
         rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
     ): FullTransaction {
-        return bitcoinCore.send(hash, memo, scriptType, value, senderPay, feeRate, sortType, unspentOutputs, rbfEnabled)
+        return bitcoinCore.send(
+            hash,
+            memo,
+            scriptType,
+            value,
+            senderPay,
+            feeRate,
+            sortType,
+            unspentOutputs,
+            rbfEnabled,
+            changeToFirstInput,
+            filters,
+        )
     }
 
     fun send(
@@ -154,8 +217,22 @@ abstract class AbstractKit {
         feeRate: Int,
         sortType: TransactionDataSortType,
         rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
     ): FullTransaction {
-        return bitcoinCore.send(hash, memo, scriptType, value, senderPay, feeRate, sortType, null, rbfEnabled)
+        return bitcoinCore.send(
+            hash,
+            memo,
+            scriptType,
+            value,
+            senderPay,
+            feeRate,
+            sortType,
+            null,
+            rbfEnabled,
+            changeToFirstInput,
+            filters,
+        )
     }
 
     fun redeem(unspentOutput: UnspentOutput, address: String, memo: String?, feeRate: Int, sortType: TransactionDataSortType, rbfEnabled: Boolean): FullTransaction {
@@ -202,8 +279,24 @@ abstract class AbstractKit {
         bitcoinCore.watchTransaction(filter, listener)
     }
 
-    fun maximumSpendableValue(address: String?, memo: String?, feeRate: Int, unspentOutputs: List<UnspentOutputInfo>?, pluginData: Map<Byte, IPluginData>): Long {
-        return bitcoinCore.maximumSpendableValue(address, memo, feeRate, unspentOutputs, pluginData)
+    fun maximumSpendableValue(
+        address: String?,
+        memo: String?,
+        feeRate: Int,
+        unspentOutputInfos: List<UnspentOutputInfo>?,
+        pluginData: Map<Byte, IPluginData>,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters
+    ): Long {
+        return bitcoinCore.maximumSpendableValue(
+            address,
+            memo,
+            feeRate,
+            unspentOutputInfos,
+            pluginData,
+            changeToFirstInput,
+            filters,
+        )
     }
 
     fun minimumSpendableValue(address: String?): Int {
@@ -214,14 +307,28 @@ abstract class AbstractKit {
         return bitcoinCore.getRawTransaction(transactionHash)
     }
 
-    fun speedUpTransaction(transactionHash: String, minFee: Long): ReplacementTransaction {
-        return bitcoinCore.replacementTransaction(transactionHash, minFee, ReplacementType.SpeedUp)
+    fun speedUpTransaction(
+        transactionHash: String,
+        minFee: Long
+    ): ReplacementTransaction {
+        return bitcoinCore.replacementTransaction(
+            transactionHash,
+            minFee,
+            ReplacementType.SpeedUp
+        )
     }
 
-    fun cancelTransaction(transactionHash: String, minFee: Long): ReplacementTransaction {
+    fun cancelTransaction(
+        transactionHash: String,
+        minFee: Long
+    ): ReplacementTransaction {
         val publicKey = bitcoinCore.receivePublicKey()
         val address = bitcoinCore.address(publicKey)
-        return bitcoinCore.replacementTransaction(transactionHash, minFee, ReplacementType.Cancel(address, publicKey))
+        return bitcoinCore.replacementTransaction(
+            transactionHash,
+            minFee,
+            ReplacementType.Cancel(address, publicKey)
+        )
     }
 
     fun send(replacementTransaction: ReplacementTransaction): FullTransaction {
@@ -229,7 +336,10 @@ abstract class AbstractKit {
     }
 
     fun speedUpTransactionInfo(transactionHash: String): ReplacementTransactionInfo? {
-        return bitcoinCore.replacementTransactionInfo(transactionHash, ReplacementType.SpeedUp)
+        return bitcoinCore.replacementTransactionInfo(
+            transactionHash,
+            ReplacementType.SpeedUp
+        )
     }
 
     fun cancelTransactionInfo(transactionHash: String): ReplacementTransactionInfo? {

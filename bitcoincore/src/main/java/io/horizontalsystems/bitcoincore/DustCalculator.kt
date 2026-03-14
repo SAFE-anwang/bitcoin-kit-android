@@ -11,10 +11,11 @@ import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
  */
 class DustCalculator(dustRelayTxFee: Int, val sizeCalculator: TransactionSizeCalculator) {
     val minFeeRate = dustRelayTxFee / 1000
-/**
- *@param type The ScriptType (Ex: P2PKH, P2WPKH, P2SH, etc.)
- *@return The minimum amount of satoshis required to make a transaction.
- */
+
+    /**
+     *@param type The ScriptType (Ex: P2PKH, P2WPKH, P2SH, etc.)
+     *@return The minimum amount of satoshis required to make a transaction.
+     */
     fun dust(type: ScriptType): Int {
         // https://github.com/bitcoin/bitcoin/blob/c536dfbcb00fb15963bf5d507b7017c241718bf6/src/policy/policy.cpp#L18
 
@@ -22,12 +23,15 @@ class DustCalculator(dustRelayTxFee: Int, val sizeCalculator: TransactionSizeCal
 
         size += when (type) {
             ScriptType.P2WPKH,
-            ScriptType.P2WSH -> {
+            ScriptType.P2WSH,
+                -> {
                 sizeCalculator.inputSize(ScriptType.P2WPKH) + sizeCalculator.witnessSize(ScriptType.P2WPKH) / 4
             }
+
             ScriptType.P2TR -> {
                 sizeCalculator.inputSize(ScriptType.P2TR) + sizeCalculator.witnessSize(ScriptType.P2TR) / 4
             }
+
             else -> {
                 sizeCalculator.inputSize(ScriptType.P2PKH)
             }

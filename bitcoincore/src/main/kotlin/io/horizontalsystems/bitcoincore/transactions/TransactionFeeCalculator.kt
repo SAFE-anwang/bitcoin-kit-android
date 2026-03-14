@@ -6,6 +6,7 @@ import io.horizontalsystems.bitcoincore.core.IRecipientSetter
 import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
+import io.horizontalsystems.bitcoincore.storage.UtxoFilters
 import io.horizontalsystems.bitcoincore.transactions.builder.InputSetter
 import io.horizontalsystems.bitcoincore.transactions.builder.MutableTransaction
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
@@ -26,7 +27,9 @@ class TransactionFeeCalculator(
         toAddress: String?,
         memo: String?,
         unspentOutputs: List<UnspentOutput>?,
-        pluginData: Map<Byte, IPluginData>
+        pluginData: Map<Byte, IPluginData>,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters
     ): BitcoinSendInfo {
         val mutableTransaction = MutableTransaction()
 
@@ -45,7 +48,9 @@ class TransactionFeeCalculator(
             senderPay = senderPay,
             unspentOutputs = unspentOutputs,
             sortType = TransactionDataSortType.None,
-            rbfEnabled = false
+            rbfEnabled = false,
+            changeToFirstInput = changeToFirstInput,
+            filters = filters,
         )
 
         val inputsTotalValue = mutableTransaction.inputsToSign.sumOf { it.previousOutput.value }

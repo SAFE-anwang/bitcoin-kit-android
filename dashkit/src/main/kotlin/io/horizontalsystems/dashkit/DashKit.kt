@@ -17,7 +17,11 @@ import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorChain
 import io.horizontalsystems.bitcoincore.blocks.validators.BlockValidatorSet
 import io.horizontalsystems.bitcoincore.blocks.validators.ProofOfWorkValidator
 import io.horizontalsystems.bitcoincore.extensions.hexToByteArray
-import io.horizontalsystems.bitcoincore.managers.*
+import io.horizontalsystems.bitcoincore.managers.ApiSyncStateManager
+import io.horizontalsystems.bitcoincore.managers.Bip44RestoreKeyConverter
+import io.horizontalsystems.bitcoincore.managers.BlockValidatorHelper
+import io.horizontalsystems.bitcoincore.managers.UnspentOutputSelector
+import io.horizontalsystems.bitcoincore.managers.UnspentOutputSelectorSingleNoChange
 import io.horizontalsystems.bitcoincore.models.Address
 import io.horizontalsystems.bitcoincore.models.BalanceInfo
 import io.horizontalsystems.bitcoincore.models.BlockInfo
@@ -29,6 +33,7 @@ import io.horizontalsystems.bitcoincore.network.Network
 import io.horizontalsystems.bitcoincore.storage.CoreDatabase
 import io.horizontalsystems.bitcoincore.storage.Storage
 import io.horizontalsystems.bitcoincore.transactions.TransactionSizeCalculator
+import io.horizontalsystems.bitcoincore.utils.AddressConverterChain
 import io.horizontalsystems.bitcoincore.utils.Base58AddressConverter
 import io.horizontalsystems.bitcoincore.utils.IAddressConverter
 import io.horizontalsystems.bitcoincore.utils.MerkleBranch
@@ -36,14 +41,32 @@ import io.horizontalsystems.bitcoincore.utils.PaymentAddressParser
 import io.horizontalsystems.bitcoincore.utils.SegwitAddressConverter
 import io.horizontalsystems.dashkit.core.DashTransactionInfoConverter
 import io.horizontalsystems.dashkit.core.SingleSha256Hasher
-import io.horizontalsystems.dashkit.instantsend.*
+import io.horizontalsystems.dashkit.instantsend.BLS
+import io.horizontalsystems.dashkit.instantsend.InstantSendFactory
+import io.horizontalsystems.dashkit.instantsend.InstantSendLockValidator
+import io.horizontalsystems.dashkit.instantsend.InstantTransactionManager
+import io.horizontalsystems.dashkit.instantsend.TransactionLockVoteValidator
 import io.horizontalsystems.dashkit.instantsend.instantsendlock.InstantSendLockHandler
 import io.horizontalsystems.dashkit.instantsend.instantsendlock.InstantSendLockManager
 import io.horizontalsystems.dashkit.instantsend.transactionlockvote.TransactionLockVoteHandler
 import io.horizontalsystems.dashkit.instantsend.transactionlockvote.TransactionLockVoteManager
-import io.horizontalsystems.dashkit.managers.*
-import io.horizontalsystems.dashkit.masternodelist.*
-import io.horizontalsystems.dashkit.messages.*
+import io.horizontalsystems.dashkit.managers.ConfirmedUnspentOutputProvider
+import io.horizontalsystems.dashkit.managers.MasternodeListManager
+import io.horizontalsystems.dashkit.managers.MasternodeListSyncer
+import io.horizontalsystems.dashkit.managers.MasternodeSortedList
+import io.horizontalsystems.dashkit.managers.QuorumListManager
+import io.horizontalsystems.dashkit.managers.QuorumSortedList
+import io.horizontalsystems.dashkit.masternodelist.MasternodeCbTxHasher
+import io.horizontalsystems.dashkit.masternodelist.MasternodeListMerkleRootCalculator
+import io.horizontalsystems.dashkit.masternodelist.MerkleRootCreator
+import io.horizontalsystems.dashkit.masternodelist.MerkleRootHasher
+import io.horizontalsystems.dashkit.masternodelist.QuorumListMerkleRootCalculator
+import io.horizontalsystems.dashkit.messages.GetMasternodeListDiffMessageSerializer
+import io.horizontalsystems.dashkit.messages.ISLockMessageParser
+import io.horizontalsystems.dashkit.messages.MasternodeListDiffMessageParser
+import io.horizontalsystems.dashkit.messages.TransactionLockMessageParser
+import io.horizontalsystems.dashkit.messages.TransactionLockVoteMessageParser
+import io.horizontalsystems.dashkit.messages.TransactionMessageParser
 import io.horizontalsystems.dashkit.models.CoinbaseTransactionSerializer
 import io.horizontalsystems.dashkit.models.DashTransactionInfo
 import io.horizontalsystems.dashkit.models.InstantTransactionState
@@ -58,6 +81,7 @@ import io.horizontalsystems.hdwalletkit.HDWallet.Purpose
 import io.horizontalsystems.hdwalletkit.Mnemonic
 import io.horizontalsystems.hodler.HodlerPlugin
 import io.reactivex.Single
+import kotlin.Boolean
 
 class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
     enum class NetworkType {
@@ -425,6 +449,44 @@ class DashKit : AbstractKit, IInstantTransactionDelegate, BitcoinCore.Listener {
                     continue
                 }
             }
+        }
+
+        private fun addressConverter(network: Network): AddressConverterChain {
+            val addressConverter = AddressConverterChain()
+            addressConverter.prependConverter(Base58AddressConverter(network.addressVersion, network.addressScriptVersion))
+            return addressConverter
+        }
+
+        fun firstAddress(
+            seed: ByteArray,
+            networkType: NetworkType,
+            isAnBaoWallet: Boolean,
+            isSafe3Wallet: Boolean,
+        ): Address {
+            return BitcoinCore.firstAddress(
+                seed,
+                Purpose.BIP44,
+                network(networkType),
+                addressConverter(network(networkType)),
+                isAnBaoWallet,
+                isSafe3Wallet
+            )
+        }
+
+        fun firstAddress(
+            extendedKey: HDExtendedKey,
+            networkType: NetworkType,
+            isAnBaoWallet: Boolean,
+            isSafe3Wallet: Boolean,
+        ): Address {
+            return BitcoinCore.firstAddress(
+                extendedKey,
+                Purpose.BIP44,
+                network(networkType),
+                addressConverter(network(networkType)),
+                isAnBaoWallet,
+                isSafe3Wallet
+            )
         }
     }
 

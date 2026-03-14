@@ -10,6 +10,16 @@ class UnspentOutputQueue(
     private val sizeCalculator: TransactionSizeCalculator,
     dustCalculator: DustCalculator,
 ) {
+    private val changeType: ScriptType
+        get() {
+            if (parameters.changeToFirstInput) {
+                selectedOutputs.firstOrNull()?.let {
+                    return it.output.scriptType
+                }
+            }
+
+            return parameters.changeType
+        }
 
     private var selectedOutputs: MutableList<UnspentOutput> = mutableListOf()
     private var totalValue: Long = 0L
@@ -46,7 +56,7 @@ class UnspentOutputQueue(
         val feeWithoutChange = calculateFeeWithoutChange()
         val (receiveValue, remainder) = calculateSendValues(feeWithoutChange)
 
-        val changeFee = sizeCalculator.outputSize(parameters.changeType) * parameters.fee
+        val changeFee = sizeCalculator.outputSize(changeType) * parameters.fee
         val actualRemainder = remainder - changeFee
 
         return if (actualRemainder <= recipientOutputDust) {
@@ -73,7 +83,7 @@ class UnspentOutputQueue(
         }
 
         val receiveValue = if (parameters.senderPay) parameters.value else parameters.value - feeWithoutChange
-        if (receiveValue <= recipientOutputDust) {
+        if (receiveValue < recipientOutputDust) {
             throw SendValueErrors.Dust
         }
 
@@ -89,6 +99,7 @@ class UnspentOutputQueue(
         val outputsLimit: Int?,
         val outputScriptType: ScriptType,
         val changeType: ScriptType,
-        val pluginDataOutputSize: Int
+        val pluginDataOutputSize: Int,
+        val changeToFirstInput: Boolean,
     )
 }

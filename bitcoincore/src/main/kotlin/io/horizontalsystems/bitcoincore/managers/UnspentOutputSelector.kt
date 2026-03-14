@@ -2,6 +2,7 @@ package io.horizontalsystems.bitcoincore.managers
 
 import io.horizontalsystems.bitcoincore.DustCalculator
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
+import io.horizontalsystems.bitcoincore.storage.UtxoFilters
 import io.horizontalsystems.bitcoincore.transactions.TransactionSizeCalculator
 import io.horizontalsystems.bitcoincore.transactions.scripts.ScriptType
 
@@ -12,8 +13,9 @@ class UnspentOutputSelector(
     private val outputsLimit: Int? = null
 ) : IUnspentOutputSelector {
 
-    val all: List<UnspentOutput>
-        get() = unspentOutputProvider.getSpendableUtxo()
+    fun getAll(filters: UtxoFilters): List<UnspentOutput> {
+        return unspentOutputProvider.getSpendableUtxo(filters)
+    }
 
     @Throws(SendValueErrors::class)
     override fun select(
@@ -23,10 +25,12 @@ class UnspentOutputSelector(
         outputScriptType: ScriptType,
         changeType: ScriptType,
         senderPay: Boolean,
-        pluginDataOutputSize: Int
+        pluginDataOutputSize: Int,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters
     ): SelectedUnspentOutputInfo {
         val sortedOutputs =
-            unspentOutputProvider.getSpendableUtxo().sortedWith(compareByDescending<UnspentOutput> {
+            unspentOutputProvider.getSpendableUtxo(filters).sortedWith(compareByDescending<UnspentOutput> {
                 it.output.failedToSpend
             }.thenBy {
                 it.output.value
@@ -45,7 +49,8 @@ class UnspentOutputSelector(
             outputsLimit = outputsLimit,
             outputScriptType = outputScriptType,
             changeType = changeType,
-            pluginDataOutputSize = pluginDataOutputSize
+            pluginDataOutputSize = pluginDataOutputSize,
+            changeToFirstInput = changeToFirstInput,
         )
         val queue = UnspentOutputQueue(params, calculator, dustCalculator)
 

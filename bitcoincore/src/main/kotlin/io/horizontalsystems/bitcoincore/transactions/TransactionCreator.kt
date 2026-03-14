@@ -6,6 +6,7 @@ import io.horizontalsystems.bitcoincore.models.PublicKey
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
+import io.horizontalsystems.bitcoincore.storage.UtxoFilters
 import io.horizontalsystems.bitcoincore.transactions.builder.MutableTransaction
 import io.horizontalsystems.bitcoincore.transactions.builder.TransactionBuilder
 import io.horizontalsystems.bitcoincore.transactions.builder.TransactionSigner
@@ -30,6 +31,8 @@ class TransactionCreator(
         unspentOutputs: List<UnspentOutput>?,
         pluginData: Map<Byte, IPluginData>,
         rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
         unlockedHeight:Long?,
         reverseHex: String?
     ): FullTransaction {
@@ -43,6 +46,8 @@ class TransactionCreator(
             unspentOutputs = unspentOutputs,
             pluginData = pluginData,
             rbfEnabled = rbfEnabled,
+            changeToFirstInput = changeToFirstInput,
+            filters = filters,
             unlockedHeight = unlockedHeight,
             reverseHex = reverseHex
         )
