@@ -12,7 +12,7 @@ kotlin {
 
 android {
     namespace 'io.horizontalsystems.bitcoincashkit'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion 23
