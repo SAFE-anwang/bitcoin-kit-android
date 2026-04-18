@@ -32,7 +32,7 @@ object RetrofitUtils {
             }
         }
         val httpBuilder = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
             .addInterceptor(headersInterceptor);
