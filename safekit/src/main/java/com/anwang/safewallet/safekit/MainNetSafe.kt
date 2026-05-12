@@ -52,14 +52,18 @@ class MainNetSafe() : Network() {
     }
 
     override fun getMainNodeIp(list: List<String>): String? {
-        if (list.isNullOrEmpty()) {
-            return dnsSeeds[Random().nextInt(dnsSeeds.size)]
+        try {
+            if (list.isEmpty()) {
+                return dnsSeeds[Random().nextInt(dnsSeeds.size)]
+            }
+            val notConnectIp = dnsSeeds.filter { !list.contains(it) && !connectFailedIp.contains(it) }
+            if (notConnectIp.isEmpty()) {
+                return null
+            }
+            return notConnectIp[Random().nextInt(notConnectIp.size)]
+        } catch (e: Exception) {
+            return dnsSeeds[0]
         }
-        val notConnectIp = dnsSeeds.filter { !list.contains(it) && !connectFailedIp.contains(it) }
-        if (notConnectIp.isNullOrEmpty()) {
-            return null
-        }
-        return notConnectIp[Random().nextInt(notConnectIp.size)]
     }
 
     override fun markedFailed(ip: String?) {
