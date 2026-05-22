@@ -68,7 +68,9 @@ class MainSafeNetService(val context: Context, val mainNetSafe: MainNetSafe) {
         }
             .subscribeOn(Schedulers.io())
             .subscribe({
-                mainNetSafe.dnsSeeds = it
+                if (it.isNotEmpty()) {
+                    mainNetSafe.dnsSeeds = it
+                }
             }, {
                 val cache = sp.getStringSet("seedIp", null)
                 cache?.let {
