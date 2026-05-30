@@ -16,6 +16,8 @@ class PeerAddressManager(private val network: Network, private val storage: ISto
     private val logger = Logger.getLogger("PeerHostManager")
     private val peerDiscover = PeerDiscover(this)
 
+    private var lookupCount = 0
+
     override val hasFreshIps: Boolean
         get() {
             getLeastScoreFastestPeer()?.let { peerAddress ->
@@ -43,7 +45,10 @@ class PeerAddressManager(private val network: Network, private val storage: ISto
 //        var peerAddress = getLeastScoreFastestPeer()
 
         if (peerAddress == null) {
-            peerDiscover.lookup(network.dnsSeeds)
+            if (lookupCount < 20) {
+                lookupCount++
+                peerDiscover.lookup(network.dnsSeeds)
+            }
             return null
         }
 
