@@ -57,3 +57,77 @@ dependencies {
     implementation project(':bitcoin-kit-android:ecashkit')
     implementation project(':bitcoin-kit-android:safekit')
 }
+
+// Allow running `fun main()` from the IDE green-arrow.
+// AGP 8.x: Replace project-level sourceSets block (which conflicts with
+// AGP's `implementation` configuration) with a custom JavaExec task.
+def kitProjectPaths = [
+        ':tools',
+        ':bitcoincore',
+        ':bitcoinkit',
+        ':bitcoincashkit',
+        ':dashkit',
+        ':litecoinkit',
+        ':ecashkit',
+]
+def kitResourcePaths = [
+        'bitcoinkit/src/main/resources',
+        'bitcoincashkit/src/main/resources',
+        'dashkit/src/main/resources',
+        'litecoinkit/src/main/resources',
+        'ecashkit/src/main/resources',
+]
+
+tasks.register('configureRuntimeClasspath') {
+    doLast {
+        // Intentionally left empty; the runtime classpath is computed
+        // lazily via the custom "runMain" task below.
+    }
+}
+
+tasks.register('runMain', JavaExec) {
+    group = 'application'
+    description = 'Run a Kotlin main() entry-point. Specify the main class via -PmainClass=...'
+
+    dependsOn ':tools:compileReleaseKotlin'
+
+    def mainClassName = project.findProperty('mainClass')
+    if (mainClassName != null) {
+        mainClass.set(mainClassName)
+    }
+
+    classpath = files({
+        def items = []
+
+        kitProjectPaths.each { path ->
+            def p = rootProject.findProject(path)
+            if (p == null) return
+            ['compileReleaseJavaWithJavac', 'compileReleaseKotlin'].each { taskName ->
+                def t = p.tasks.findByName(taskName)
+                if (t != null) items.add(t.outputs.files)
+            }
+        }
+
+        kitResourcePaths.each { rel ->
+            def dir = rootProject.file(rel)
+            if (dir.exists()) items.add(dir)
+        }
+
+        def cfg = configurations.findByName('releaseRuntimeClasspath')
+        if (cfg != null) {
+            items.add(cfg.incoming.artifactView {
+                componentFilter { c ->
+                    !(c instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier)
+                }
+                lenient = true
+            }.files)
+        }
+
+        return items
+    })
+}
+
+// Expose a runtimeClasspath-like property for IDE / manual use
+ext.mainRuntimeClasspath = files({
+    tasks.findByName('runMain')?.classpath ?: files()
+})

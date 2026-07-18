@@ -4,6 +4,7 @@ import io.horizontalsystems.bitcoincore.core.IPluginData
 import io.horizontalsystems.bitcoincore.models.BitcoinPaymentData
 import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
 import io.horizontalsystems.bitcoincore.models.PublicKey
+import io.horizontalsystems.bitcoincore.models.SignedRawTransaction
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.models.TransactionFilterType
 import io.horizontalsystems.bitcoincore.models.TransactionInfo
@@ -26,6 +27,10 @@ abstract class AbstractKit {
 
     fun getUnspentOutputs(filters: UtxoFilters): List<UnspentOutputInfo> {
         return bitcoinCore.getUnspentOutputs(filters)
+    }
+
+    fun selectUnspentOutputs(value: Long, feeRate: Int): List<UnspentOutputInfo> {
+        return bitcoinCore.selectUnspentOutputs(value, feeRate)
     }
 
     val balance
@@ -305,6 +310,25 @@ abstract class AbstractKit {
 
     fun getRawTransaction(transactionHash: String): String? {
         return bitcoinCore.getRawTransaction(transactionHash)
+    }
+
+    fun rawTransaction(
+        address: String,
+        memo: String?,
+        value: Long,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>? = null,
+        pluginData: Map<Byte, IPluginData> = mapOf(),
+        rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
+    ): SignedRawTransaction {
+        return bitcoinCore.rawTransaction(
+            address, memo, value, senderPay, feeRate, sortType,
+            unspentOutputs, pluginData, rbfEnabled, changeToFirstInput, filters,
+        )
     }
 
     fun speedUpTransaction(

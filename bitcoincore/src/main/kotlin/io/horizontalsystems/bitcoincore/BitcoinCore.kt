@@ -22,6 +22,7 @@ import io.horizontalsystems.bitcoincore.blocks.*
 import io.horizontalsystems.bitcoincore.blocks.validators.IBlockValidator
 import io.horizontalsystems.bitcoincore.core.*
 import io.horizontalsystems.bitcoincore.extensions.toHexString
+import io.horizontalsystems.bitcoincore.extensions.toReversedHex
 import io.horizontalsystems.bitcoincore.managers.IRestoreKeyConverter
 import io.horizontalsystems.bitcoincore.managers.IUnspentOutputSelector
 import io.horizontalsystems.bitcoincore.managers.RestoreKeyConverterChain
@@ -34,6 +35,7 @@ import io.horizontalsystems.bitcoincore.models.BitcoinSendInfo
 import io.horizontalsystems.bitcoincore.models.BlockInfo
 import io.horizontalsystems.bitcoincore.models.Checkpoint
 import io.horizontalsystems.bitcoincore.models.PublicKey
+import io.horizontalsystems.bitcoincore.models.SignedRawTransaction
 import io.horizontalsystems.bitcoincore.models.TransactionDataSortType
 import io.horizontalsystems.bitcoincore.models.TransactionFilterType
 import io.horizontalsystems.bitcoincore.models.TransactionInfo
@@ -57,6 +59,7 @@ import io.horizontalsystems.bitcoincore.storage.FullTransaction
 import io.horizontalsystems.bitcoincore.storage.UnspentOutput
 import io.horizontalsystems.bitcoincore.storage.UnspentOutputInfo
 import io.horizontalsystems.bitcoincore.storage.UtxoFilters
+import io.horizontalsystems.bitcoincore.serializers.TransactionSerializer
 import io.horizontalsystems.bitcoincore.transactions.TransactionCreator
 import io.horizontalsystems.bitcoincore.transactions.TransactionFeeCalculator
 import io.horizontalsystems.bitcoincore.transactions.TransactionSyncer
@@ -172,6 +175,21 @@ class BitcoinCore(
         return unspentOutputSelector.getAllSpendable(filters).map {
             UnspentOutputInfo.fromUnspentOutput(it)
         }
+    }
+
+    fun selectUnspentOutputs(value: Long, feeRate: Int): List<UnspentOutputInfo> {
+        val sendInfo = transactionFeeCalculator?.sendInfo(
+            value = value,
+            feeRate = feeRate,
+            senderPay = true,
+            toAddress = null,
+            memo = null,
+            unspentOutputs = null,
+            pluginData = mapOf(),
+            changeToFirstInput = false,
+            filters = UtxoFilters()
+        ) ?: throw CoreError.ReadOnlyCore
+        return sendInfo.unspentOutputs.map { UnspentOutputInfo.fromUnspentOutput(it) }
     }
 
     //
@@ -593,6 +611,43 @@ class BitcoinCore(
 
     fun getRawTransaction(transactionHash: String): String? {
         return dataProvider.getRawTransaction(transactionHash)
+    }
+
+    fun rawTransaction(
+        address: String,
+        memo: String?,
+        value: Long,
+        senderPay: Boolean = true,
+        feeRate: Int,
+        sortType: TransactionDataSortType,
+        unspentOutputs: List<UnspentOutputInfo>?,
+        pluginData: Map<Byte, IPluginData>,
+        rbfEnabled: Boolean,
+        changeToFirstInput: Boolean,
+        filters: UtxoFilters,
+    ): SignedRawTransaction {
+        val outputs = unspentOutputs?.mapNotNull {
+            unspentOutputSelector.getAllSpendable(filters).firstOrNull { unspentOutput ->
+                unspentOutput.transaction.hash.contentEquals(it.transactionHash) && unspentOutput.output.index == it.outputIndex
+            }
+        }
+        val fullTransaction = transactionCreator?.buildSignedTransaction(
+            toAddress = address,
+            memo = memo,
+            value = value,
+            feeRate = feeRate,
+            senderPay = senderPay,
+            sortType = sortType,
+            unspentOutputs = outputs,
+            pluginData = pluginData,
+            rbfEnabled = rbfEnabled,
+            changeToFirstInput = changeToFirstInput,
+            filters = filters,
+        ) ?: throw CoreError.ReadOnlyCore
+        return SignedRawTransaction(
+            hex = TransactionSerializer.serialize(fullTransaction).toHexString(),
+            transactionHash = fullTransaction.header.hash.toReversedHex(),
+        )
     }
 
     fun getTransaction(hash: String): TransactionInfo? {
