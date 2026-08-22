@@ -70,20 +70,34 @@ class BlockchairApiSyncer(
         blockchain.insertLastBlock(header, blockHeaderItem.height)
     }
 
-    private fun scanSingle(): Single<Unit> = Single.create {
-        val allKeys = storage.getPublicKeys()
-        val stopHeight = storage.downloadedTransactionsBestBlockHeight()
-        fetchRecursive(allKeys, allKeys, stopHeight)
-        fetchLastBlock()
+    private fun scanSingle(): Single<Unit> = Single.create { emitter ->
+        try {
+            val allKeys = storage.getPublicKeys()
+            // A height-based cutoff is only valid for incremental re-scans of a wallet
+            // whose initial restore has completed. During the initial restore the storage
+            // may already hold block hashes from an earlier failed attempt; using their
+            // height as a cutoff would skip all older history for keys discovered later
+            // (gap expansion), permanently losing transactions.
+            val stopHeight = if (apiSyncStateManager.restored) {
+                storage.downloadedTransactionsBestBlockHeight()
+            } else {
+                null
+            }
+            fetchRecursive(allKeys, allKeys, stopHeight)
+            fetchLastBlock()
 
-        apiSyncStateManager.restored = true
-        listener?.onSyncSuccess()
+            apiSyncStateManager.restored = true
+            listener?.onSyncSuccess()
+            emitter.onSuccess(Unit)
+        } catch (e: Throwable) {
+            emitter.tryOnError(e)
+        }
     }
 
     private fun fetchRecursive(
         keys: List<PublicKey>,
         allKeys: List<PublicKey>,
-        stopHeight: Int
+        stopHeight: Int?
     ) {
         val publicKeyMap = mutableMapOf<String, PublicKey>()
         val addresses = mutableListOf<String>()
