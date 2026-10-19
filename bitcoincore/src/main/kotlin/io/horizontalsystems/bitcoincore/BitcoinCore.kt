@@ -239,7 +239,7 @@ class BitcoinCore(
         connectionManager.onEnterBackground()
     }
 
-    fun transactions(fromUid: String? = null, type: TransactionFilterType? = null, limit: Int? = null): Single<List<TransactionInfo>> {
+    suspend fun transactions(fromUid: String? = null, type: TransactionFilterType? = null, limit: Int? = null): List<TransactionInfo> {
         return dataProvider.transactions(fromUid, type, limit)
     }
 

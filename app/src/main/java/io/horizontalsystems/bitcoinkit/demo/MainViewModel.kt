@@ -2,6 +2,7 @@ package io.horizontalsystems.bitcoinkit.demo
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.horizontalsystems.bitcoincore.BitcoinCore
 import io.horizontalsystems.bitcoincore.BitcoinCore.KitState
 import io.horizontalsystems.bitcoincore.core.IPluginData
@@ -24,6 +25,7 @@ import io.horizontalsystems.hodler.LockTimeInterval
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.fragment_send_receive.*
 import com.anwang.safewallet.safekit.SafeKit
+import kotlinx.coroutines.launch
 
 
 class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener {
@@ -43,7 +45,6 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
     val transactionRaw = MutableLiveData<String>()
     val statusInfo = MutableLiveData<Map<String, Any>>()
     lateinit var networkName: String
-    private val disposables = CompositeDisposable()
 
     private var started = false
         set(value) {
@@ -280,10 +281,8 @@ class MainViewModel : ViewModel(),  /* BitcoinKit.Listener ,*/ SafeKit.Listener 
     fun setTransactionFilterType(transactionFilterType: TransactionFilterType?) {
         this.transactionFilterType = transactionFilterType
 
-        safeKit.transactions(type = transactionFilterType).subscribe { txList: List<TransactionInfo> ->
-            transactions.postValue(txList)
-        }.let {
-            disposables.add(it)
+        viewModelScope.launch {
+            transactions.postValue(bitcoinKit.transactions(type = transactionFilterType))
         }
     }
 }
