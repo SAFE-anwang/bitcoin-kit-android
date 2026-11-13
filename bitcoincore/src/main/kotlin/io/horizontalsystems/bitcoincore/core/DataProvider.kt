@@ -159,6 +159,6 @@ class DataProvider(
     }
 
     fun updateBalance() {
-        balanceUpdateSubject.onNext(true)
+        balanceUpdateFlow.tryEmit(Unit)
     }
 }
